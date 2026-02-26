@@ -9,6 +9,7 @@ import { FaGear } from "react-icons/fa6";
 import { LuPackageOpen } from "react-icons/lu";
 
 import { useRouter, usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 
 interface MenuItem {
   name: string;
@@ -30,13 +31,18 @@ const menuItems: MenuItem[] = [
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <aside className="flex flex-col w-72 h-screen bg-sidebar-bg text-sidebar-text p-4 border-r border-[#26151c]">
       
       <nav className="flex-1 flex flex-col gap-1">
         {menuItems.map((item) => {
-          const isActive = pathname === item.path;
+          const isActive = mounted ? pathname === item.path : false;
 
           return (
             <button
