@@ -10,6 +10,7 @@ import { LuPackageOpen } from "react-icons/lu";
 
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useUser } from '@/context/AuthContext';
 
 interface MenuItem {
   name: string;
@@ -32,9 +33,12 @@ export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const { user } = useUser();
+
 
   useEffect(() => {
     setMounted(true);
+    
   }, []);
 
   return (
@@ -78,11 +82,11 @@ export default function Sidebar() {
             </div>
 
             <div className="flex flex-col">
-              <span className="text-sm font-bold tracking-widest text-white leading-none italic uppercase">
-                (User)
+              <span className="text-sm font-bold tracking-widest text-white leading-none italic ">
+                {user?.user_metadata.name}
               </span>
               <span className="text-[10px] font-bold uppercase text-[#5a424b] mt-1">
-                Admin
+                {user?.role_name}
               </span>
             </div>
           </div>

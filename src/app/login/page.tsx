@@ -1,23 +1,47 @@
 "use client";
 
 import { useState } from "react";
-
-
+import { useRouter } from "next/navigation";
 
 import { MdOutlineMail } from "react-icons/md";
 import { IoEyeOutline } from "react-icons/io5";
 import { FaRegEyeSlash } from "react-icons/fa";
 import { CiLock } from "react-icons/ci";
 import { PiGarageLight } from "react-icons/pi";
-
-
-
+import { createClient } from '@/lib/supabase/client';
 
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+  const supabase = createClient();
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setError("Credenciales incorrectas. Por favor, inténtalo de nuevo.");
+      } else {
+        router.push("/ternium/dashboard");
+      }
+    } catch (err) {
+      setError("Error al iniciar sesión. Por favor, inténtalo de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -53,7 +77,7 @@ export default function LoginPage() {
               Ingrese sus credenciales corporativas para acceder.
             </p>
 
-            <form className="mt-8 space-y-5">
+            <form onSubmit={handleLogin} className="mt-8 space-y-5">
               <div className="space-y-2">
                 <label
                   htmlFor="email"
@@ -118,11 +142,18 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {error && (
+                <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
+                  {error}
+                </div>
+              )}
+
               <button
-                type="button"
-                className="mt-1 h-12 w-full rounded-md bg-ternium-red text-sm font-semibold tracking-wide text-white transition hover:bg-[#c70511]"
+                type="submit"
+                disabled={loading}
+                className="mt-1 h-12 w-full rounded-md bg-ternium-red text-sm font-semibold tracking-wide text-white transition hover:bg-[#c70511] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                INICIAR SESIÓN
+                {loading ? "INICIANDO SESIÓN..." : "INICIAR SESIÓN"}
               </button>
             </form>
 

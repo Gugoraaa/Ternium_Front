@@ -16,7 +16,8 @@ export default function CreateUserForm() {
     apellido: '',
     email: '',
     rol: '',
-    cliente: ''
+    cliente: '',
+    contraseña: '',
   });
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -31,7 +32,7 @@ export default function CreateUserForm() {
     e.preventDefault();
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
-      password: 'password123',
+      password: formData.contraseña,
       options: {
         data: {
           name: formData.nombre,
@@ -102,6 +103,17 @@ export default function CreateUserForm() {
                 type="email" 
                 name="email"
                 value={formData.email}
+                onChange={handleInputChange}
+                placeholder="usuario@ternium.com" 
+                className="w-full p-4 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300 shadow-sm"
+              />
+            </div>
+            <div className="space-y-3 mb-8">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Contraseña</label>
+              <input 
+                type="password" 
+                name="password"
+                value={formData.contraseña}
                 onChange={handleInputChange}
                 placeholder="usuario@ternium.com" 
                 className="w-full p-4 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300 shadow-sm"
