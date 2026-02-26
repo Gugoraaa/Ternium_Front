@@ -112,10 +112,10 @@ export default function CreateUserForm() {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Contraseña</label>
               <input 
                 type="password" 
-                name="password"
+                name="contraseña"
                 value={formData.contraseña}
                 onChange={handleInputChange}
-                placeholder="usuario@ternium.com" 
+                placeholder="Contraseña" 
                 className="w-full p-4 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300 shadow-sm"
               />
             </div>
