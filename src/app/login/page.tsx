@@ -40,7 +40,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-center px-6 py-12 lg:px-12">
           <div className="w-full max-w-md">
             <div className="flex items-center gap-3">
-              <PiGarageLight className="h-6 w-6" fill="#E30613" />
+              <PiGarageLight className="h-6 w-6" fill="#FF3300" />
               <div className="text-lg font-semibold text-slate-900">
                 Ternium
               </div>
@@ -120,7 +120,7 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                className="mt-1 h-12 w-full rounded-md bg-[#E30613] text-sm font-semibold tracking-wide text-white transition hover:bg-[#c70511]"
+                className="mt-1 h-12 w-full rounded-md bg-ternium-red text-sm font-semibold tracking-wide text-white transition hover:bg-[#c70511]"
               >
                 INICIAR SESIÓN
               </button>

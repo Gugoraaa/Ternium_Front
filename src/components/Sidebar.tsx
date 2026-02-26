@@ -32,7 +32,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex flex-col w-72 h-screen bg-[#140a0e] text-[#b08d99] p-4 border-r border-[#26151c]">
+    <aside className="flex flex-col w-72 h-screen bg-sidebar-bg text-sidebar-text p-4 border-r border-[#26151c]">
       
       <nav className="flex-1 flex flex-col gap-1">
         {menuItems.map((item) => {

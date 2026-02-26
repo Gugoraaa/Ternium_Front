@@ -5,7 +5,10 @@
   --foreground: #171717;
 }
 
-@theme inline {
+@theme {
+  --color-ternium-red: #E30613;
+  --color-sidebar-bg: #1f0f14;
+  --color-sidebar-text: #B38285;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
