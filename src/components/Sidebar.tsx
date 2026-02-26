@@ -42,7 +42,9 @@ export default function Sidebar() {
       
       <nav className="flex-1 flex flex-col gap-1">
         {menuItems.map((item) => {
-          const isActive = mounted ? pathname === item.path : false;
+          const isActive = mounted 
+          ? (pathname === item.path || pathname.startsWith(`${item.path}/`)) 
+          : false;
 
           return (
             <button

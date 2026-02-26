@@ -8,9 +8,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="flex">
+        <div className="flex h-screen">
           <Sidebar />
-          {children}
+          <div className="w-full h-full overflow-y-auto">
+            {children}
+          </div>
         </div>
       </body>
     </html>
