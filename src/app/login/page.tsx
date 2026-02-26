@@ -2,11 +2,17 @@
 
 import { useState } from "react";
 
-import EmailIcon from "@/components/icons/EmailIcon";
-import EyeIcon from "@/components/icons/EyeIcon";
-import EyeOffIcon from "@/components/icons/EyeOffIcon";
-import LockIcon from "@/components/icons/LockIcon";
-import TerniumMark from "@/components/icons/TerniumMark";
+
+
+import { MdOutlineMail } from "react-icons/md";
+import { IoEyeOutline } from "react-icons/io5";
+import { FaRegEyeSlash } from "react-icons/fa";
+import { CiLock } from "react-icons/ci";
+import { PiGarageLight } from "react-icons/pi";
+
+
+
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -34,7 +40,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-center px-6 py-12 lg:px-12">
           <div className="w-full max-w-md">
             <div className="flex items-center gap-3">
-              <TerniumMark className="h-9 w-9" />
+              <PiGarageLight className="h-6 w-6" fill="#E30613" />
               <div className="text-lg font-semibold text-slate-900">
                 Ternium
               </div>
@@ -57,7 +63,7 @@ export default function LoginPage() {
                 </label>
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
-                    <EmailIcon className="h-5 w-5" />
+                    <MdOutlineMail className="h-5 w-5" />
                   </div>
                   <input
                     id="email"
@@ -81,7 +87,7 @@ export default function LoginPage() {
                 </label>
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
-                    <LockIcon className="h-5 w-5" />
+                    <CiLock className="h-5 w-5" />
                   </div>
                   <input
                     id="password"
@@ -104,9 +110,9 @@ export default function LoginPage() {
                     }
                   >
                     {isPasswordVisible ? (
-                      <EyeOffIcon className="h-5 w-5" />
+                      <IoEyeOutline className="h-5 w-5" />
                     ) : (
-                      <EyeIcon className="h-5 w-5" />
+                      <FaRegEyeSlash className="h-5 w-5" />
                     )}
                   </button>
                 </div>
