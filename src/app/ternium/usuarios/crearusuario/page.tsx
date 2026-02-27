@@ -6,11 +6,27 @@ import {
   FaRegSave
 } from 'react-icons/fa';
 import { IoChevronDown } from 'react-icons/io5';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { UUID } from 'crypto';
+import { useUser } from '@/context/AuthContext';
+
+interface Role {
+  id: number;    
+  name: string;   
+}
+
+interface Client {
+  id: UUID;    
+  name: string;   
+}
+
 export default function CreateUserForm() {
+  const { user } = useUser();
   const supabase = createClient(); 
   const [userCategory, setUserCategory] = useState('employee');
+  const [roles, setRoles] = useState<Role[]|null>([]);
+  const [clients, setClients] = useState<Client[]|null>([]);
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -28,8 +44,31 @@ export default function CreateUserForm() {
     }));
   }
 
+   async function fetchData() {
+    try {
+      const [rolesRes, clientsRes] = await Promise.all([
+        supabase.from('roles').select('*'),
+        supabase.from('clients').select('*')
+      ]);
+
+      if (rolesRes.data) setRoles(rolesRes.data);
+      if (clientsRes.data) setClients(clientsRes.data);
+
+      
+    } catch (err) {
+      console.error("Error en la carga inicial:", err);
+    }
+}
+  
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+ 
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.contraseña,
@@ -41,6 +80,13 @@ export default function CreateUserForm() {
         }
       }
     });
+    
+    if (userCategory === 'external') {
+      const { data, error } = await supabase.from('client_workers').insert({
+        user_id: user?.id,
+        client_id: formData.cliente,
+      });
+    }
     
     if (error) {
       console.error('Error al crear usuario:', error);
@@ -123,7 +169,6 @@ export default function CreateUserForm() {
             <div className="space-y-3 mb-8">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoría de Usuario</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Empleado Ternium */}
                 <div 
                   className={`relative p-5 border-2 rounded-2xl flex items-center gap-4 cursor-pointer transition-all ${
                     userCategory === 'employee' 
@@ -144,7 +189,6 @@ export default function CreateUserForm() {
                     <p className={`text-xs ${userCategory === 'employee' ? 'text-gray-400' : 'text-gray-300'}`}>Acceso a red interna y ERP</p>
                   </div>
                 </div>
-                {/* Cliente Externo */}
                 <div 
                   className={`relative p-5 border-2 rounded-2xl flex items-center gap-4 cursor-pointer transition-all ${
                     userCategory === 'external' 
@@ -182,15 +226,20 @@ export default function CreateUserForm() {
                   {userCategory === 'employee' ? (
                     <>
                       
-                      <option value={1}>Administrador</option>
+                      {roles?.map((role: any) => (
+                        <option key={role.id} value={role.id}>
+                          {role.name}
+                        </option>
+                      ))}
                       
                     </>
                   ) : (
                     <>
-                      <option>Seleccione un cliente</option>
-                      <option>Cliente A</option>
-                      <option>Cliente B</option>
-                      <option>Cliente C</option>
+                      {clients?.map ((client: any) => (
+                        <option key={client.id} value={client.id}>
+                          {client.name}
+                        </option>
+                      ))}
                     </>
                   )}
                 </select>
