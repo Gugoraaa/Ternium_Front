@@ -12,6 +12,7 @@ import { UUID } from 'crypto';
 import { useUser } from '@/context/AuthContext';
 import {useRouter } from 'next/navigation';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 interface Role {
   id: number;    
@@ -62,6 +63,7 @@ export default function CreateUserForm() {
       
     } catch (err) {
       console.error("Error en la carga inicial:", err);
+      toast.error('Error al cargar los datos del formulario');
     } finally {
       setLoading(false);
     }
@@ -76,29 +78,83 @@ export default function CreateUserForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
-    const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.contraseña,
-      options: {
-        data: {
-          name: formData.nombre,
-          second_name: formData.apellido,
-          role_id: parseInt(formData.rol),
+    if (!formData.nombre || !formData.apellido || !formData.email || !formData.contraseña) {
+      toast.error('Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    if (userCategory === 'employee' && !formData.rol) {
+      toast.error('Por favor selecciona un rol para el empleado');
+      return;
+    }
+
+    if (userCategory === 'external' && !formData.cliente) {
+      toast.error('Por favor selecciona un cliente para el usuario externo');
+      return;
+    }
+
+    if (formData.contraseña.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    try {
+      toast.loading('Creando usuario...', { id: 'createUser' });
+
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.contraseña,
+        options: {
+          data: {
+            name: formData.nombre,
+            second_name: formData.apellido,
+            role_id: parseInt(formData.rol),
+          }
+        }
+      });
+      
+      if (error) {
+        throw error;
+      }
+
+      if (userCategory === 'external') {
+        const { data: clientData, error: clientError } = await supabase.from('client_workers').insert({
+          user_id: data.user?.id,
+          client_id: formData.cliente,
+        });
+
+        if (clientError) {
+          throw clientError;
         }
       }
-    });
-    
-    if (userCategory === 'external') {
-      const { data, error } = await supabase.from('client_workers').insert({
-        user_id: user?.id,
-        client_id: formData.cliente,
+      
+      toast.success('Usuario creado exitosamente', { id: 'createUser' });
+      
+      // Limpiar formulario
+      setFormData({
+        nombre: '',
+        apellido: '',
+        email: '',
+        rol: '',
+        cliente: '',
+        contraseña: '',
       });
-    }
-    
-    if (error) {
-      console.error('Error al crear usuario:', error);
-    } else {
-      console.log('Usuario creado exitosamente:', data);
+      
+      // Redirigir después de un pequeño delay
+      setTimeout(() => {
+        router.push('/ternium/usuarios');
+      }, 1500);
+      
+    } catch (error: any) {
+      console.error('Error al crear usuario:');
+      
+      if (error.message?.includes('User already registered')) {
+        toast.error('El correo electrónico ya está registrado', { id: 'createUser' });
+      } else if (error.message?.includes('Invalid email')) {
+        toast.error('El correo electrónico no es válido', { id: 'createUser' });
+      } else {
+        toast.error('Error al crear usuario. Intenta nuevamente', { id: 'createUser' });
+      }
     }
   }
 
