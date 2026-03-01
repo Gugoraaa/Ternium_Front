@@ -319,7 +319,11 @@ export default function CreateUserForm() {
 
           {/* Footer Actions */}
           <div className="flex justify-end items-center gap-8 pt-6">
-            <button onClick={() => router.push('/ternium/usuarios')} className="text-gray-400 font-bold hover:text-gray-600 transition-colors tracking-tight">
+            <button 
+              type="button"
+              onClick={() => router.push('/ternium/usuarios')} 
+              className="text-gray-400 font-bold hover:text-gray-600 transition-colors tracking-tight"
+            >
               Cancelar
             </button>
             <button 
