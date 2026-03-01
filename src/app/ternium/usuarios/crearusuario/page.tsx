@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { UUID } from 'crypto';
 import { useUser } from '@/context/AuthContext';
 import {useRouter } from 'next/navigation';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface Role {
   id: number;    
@@ -29,6 +30,7 @@ export default function CreateUserForm() {
   const [userCategory, setUserCategory] = useState('employee');
   const [roles, setRoles] = useState<Role[]|null>([]);
   const [clients, setClients] = useState<Client[]|null>([]);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -48,6 +50,7 @@ export default function CreateUserForm() {
 
    async function fetchData() {
     try {
+      setLoading(true);
       const [rolesRes, clientsRes] = await Promise.all([
         supabase.from('roles').select('*'),
         supabase.from('clients').select('*')
@@ -59,6 +62,8 @@ export default function CreateUserForm() {
       
     } catch (err) {
       console.error("Error en la carga inicial:", err);
+    } finally {
+      setLoading(false);
     }
 }
   
@@ -95,6 +100,10 @@ export default function CreateUserForm() {
     } else {
       console.log('Usuario creado exitosamente:', data);
     }
+  }
+
+  if (loading) {
+    return <LoadingSpinner size="large" message="Cargando datos del formulario..." fullScreen />;
   }
 
   return (

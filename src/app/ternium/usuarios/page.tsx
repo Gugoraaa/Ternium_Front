@@ -5,6 +5,7 @@ import {
   FaPlus, FaSearch, FaFilter, FaFileExport, FaEllipsisV 
 } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function UsuariosPage() {
   const supabase = createClient();
@@ -30,6 +31,10 @@ export default function UsuariosPage() {
     }
     fetchUsuarios();
   }, []);
+
+  if (loading) {
+    return <LoadingSpinner size="large" message="Cargando usuarios..." fullScreen />;
+  }
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen font-sans text-slate-700">
