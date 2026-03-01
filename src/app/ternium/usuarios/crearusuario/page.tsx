@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { UUID } from 'crypto';
 import { useUser } from '@/context/AuthContext';
+import {useRouter } from 'next/navigation';
 
 interface Role {
   id: number;    
@@ -22,6 +23,7 @@ interface Client {
 }
 
 export default function CreateUserForm() {
+  const router = useRouter();
   const { user } = useUser();
   const supabase = createClient(); 
   const [userCategory, setUserCategory] = useState('employee');
@@ -252,7 +254,7 @@ export default function CreateUserForm() {
 
           {/* Footer Actions */}
           <div className="flex justify-end items-center gap-8 pt-6">
-            <button className="text-gray-400 font-bold hover:text-gray-600 transition-colors tracking-tight">
+            <button onClick={() => router.push('/ternium/usuarios')} className="text-gray-400 font-bold hover:text-gray-600 transition-colors tracking-tight">
               Cancelar
             </button>
             <button 
