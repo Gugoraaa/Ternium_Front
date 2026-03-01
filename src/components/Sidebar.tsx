@@ -11,6 +11,7 @@ import { LuPackageOpen } from "react-icons/lu";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useUser } from '@/context/AuthContext';
+import { createClient } from '@/lib/supabase/client';
 
 interface MenuItem {
   name: string;
@@ -34,6 +35,16 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const { user } = useUser();
+  const supabase = createClient();
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
 
 
   useEffect(() => {
@@ -93,7 +104,7 @@ export default function Sidebar() {
 
           <button 
             className="p-2 hover:bg-[#26151c] rounded-lg transition-colors group text-[#b08d99] hover:text-white"
-            onClick={() => router.push('/login')}
+            onClick={handleSignOut}
           >
             <MdLogout size={20} />
           </button>
