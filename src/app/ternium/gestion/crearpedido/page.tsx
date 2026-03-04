@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { 
   FiSearch, FiGrid, FiUser, FiZap, FiSave, 
-  FiSend, FiCheckCircle, FiRefreshCw 
+   FiCheckCircle 
 } from 'react-icons/fi';
 import { HiOutlineDocumentText } from 'react-icons/hi';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
+import { useUser } from '@/context/AuthContext';
 
 const CapturaOrden = () => {
+  const { user } = useUser();
+  
+
   const [isChecked, setIsChecked] = useState(false);
   const [formData, setFormData] = useState({
     producto: '',
@@ -21,9 +25,9 @@ const CapturaOrden = () => {
   const [loading, setLoading] = useState(false);
   const [clienteSuggestions, setClienteSuggestions] = useState<any[]>([]);
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [productData, setProductData] = useState<any>(null);
   const supabase = createClient();
 
-  // Calcular progreso dinámicamente
   const calculateProgress = () => {
     let completed = 0;
     if (formData.producto && formData.masterId && formData.cliente) completed++;
@@ -36,13 +40,11 @@ const CapturaOrden = () => {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Si el campo es cliente, buscar sugerencias con debouncing
     if (field === 'cliente') {
       searchClientes(value);
     }
   };
 
-  // Debouncing para buscar clientes
   const searchClientes = async (query: string) => {
     if (query.length < 2) {
       setClienteSuggestions([]);
@@ -75,6 +77,60 @@ const CapturaOrden = () => {
     setClienteSuggestions([]);
   };
 
+  const handleGenerateOrder = async () => {
+    if (!isChecked) {
+      toast.error('Por favor valida la especificación antes de generar la orden');
+      return;
+    }
+
+    if (!productData || !specData || !formData.clienteId) {
+      toast.error('Faltan datos para generar la orden');
+      return;
+    }
+
+    setLoading(true);
+    toast.loading('Generando orden...', { id: 'generateOrder' });
+
+    try {
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          worker_id: user?.id,
+          client_id: formData.clienteId,
+          product_id: productData.id,
+          specs_id: specData.id,
+          reviewed_by: null
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        throw orderError;
+      }
+
+      toast.success('Orden generada exitosamente', { id: 'generateOrder' });
+      
+      // Limpiar formulario después de éxito
+      setTimeout(() => {
+        setFormData({
+          producto: '',
+          masterId: '',
+          cliente: '',
+          clienteId: ''
+        });
+        setSpecData(null);
+        setProductData(null);
+        setIsChecked(false);
+      }, 2000);
+
+    } catch (error: any) {
+      console.error('Error al generar orden:', error);
+      toast.error(error.message || 'Error al generar orden', { id: 'generateOrder' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGenerateSpec = async () => {
     if (!formData.producto || !formData.masterId || !formData.cliente) {
       toast.error('Por favor completa todos los campos');
@@ -85,24 +141,24 @@ const CapturaOrden = () => {
     toast.loading('Generando especificación...', { id: 'generateSpec' });
 
     try {
-      // Buscar producto por pt y master exactos
-      const { data: productData, error: productError } = await supabase
+      const { data: productDataResult, error: productError } = await supabase
         .from('product')
         .select('id')
         .eq('pt', formData.producto)
         .eq('master', formData.masterId)
         .single();
 
-      if (productError || !productData) {
+      if (productError || !productDataResult) {
         toast.error("Producto no encontrado");
         return;
       }
 
-      // Buscar especificaciones por product_id
+      setProductData(productDataResult);
+
       const { data: specsData, error: specsError } = await supabase
         .from('specs')
         .select('*')
-        .eq('producto_id', productData.id)
+        .eq('producto_id', productDataResult.id)
         .single();
 
       if (specsError || !specsData) {
@@ -291,7 +347,7 @@ const CapturaOrden = () => {
             {/* Botones de Acción */}
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <button 
-                onClick={() => {}}
+                onClick={handleGenerateOrder}
                 disabled={loading || !isChecked}
                 className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 ${
                   loading || !isChecked 
