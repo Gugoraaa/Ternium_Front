@@ -1,14 +1,124 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   FiSearch, FiGrid, FiUser, FiZap, FiSave, 
   FiSend, FiCheckCircle, FiRefreshCw 
 } from 'react-icons/fi';
 import { HiOutlineDocumentText } from 'react-icons/hi';
+import { createClient } from '@/lib/supabase/client';
+import toast from 'react-hot-toast';
 
 const CapturaOrden = () => {
   const [isChecked, setIsChecked] = useState(false);
+  const [formData, setFormData] = useState({
+    producto: '',
+    masterId: '',
+    cliente: '',
+    clienteId: ''
+  });
+  const [specData, setSpecData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [clienteSuggestions, setClienteSuggestions] = useState<any[]>([]);
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const supabase = createClient();
+
+  // Calcular progreso dinámicamente
+  const calculateProgress = () => {
+    let completed = 0;
+    if (formData.producto && formData.masterId && formData.cliente) completed++;
+    if (specData) completed++;
+    if (isChecked) completed++;
+    
+    return Math.round((completed / 3) * 100);
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Si el campo es cliente, buscar sugerencias con debouncing
+    if (field === 'cliente') {
+      searchClientes(value);
+    }
+  };
+
+  // Debouncing para buscar clientes
+  const searchClientes = async (query: string) => {
+    if (query.length < 2) {
+      setClienteSuggestions([]);
+      setShowClienteDropdown(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .ilike('name', `%${query}%`)
+        .limit(5);
+
+      if (error) throw error;
+      setClienteSuggestions(data || []);
+      setShowClienteDropdown(true);
+    } catch (error) {
+      console.error('Error al buscar clientes:', error);
+    }
+  };
+
+  const selectCliente = (cliente: any) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      cliente: cliente.name,
+      clienteId: cliente.id 
+    }));
+    setShowClienteDropdown(false);
+    setClienteSuggestions([]);
+  };
+
+  const handleGenerateSpec = async () => {
+    if (!formData.producto || !formData.masterId || !formData.cliente) {
+      toast.error('Por favor completa todos los campos');
+      return;
+    }
+
+    setLoading(true);
+    toast.loading('Generando especificación...', { id: 'generateSpec' });
+
+    try {
+      // Buscar producto por pt y master exactos
+      const { data: productData, error: productError } = await supabase
+        .from('product')
+        .select('id')
+        .eq('pt', formData.producto)
+        .eq('master', formData.masterId)
+        .single();
+
+      if (productError || !productData) {
+        toast.error("Producto no encontrado");
+        return;
+      }
+
+      // Buscar especificaciones por product_id
+      const { data: specsData, error: specsError } = await supabase
+        .from('specs')
+        .select('*')
+        .eq('producto_id', productData.id)
+        .single();
+
+      if (specsError || !specsData) {
+        toast.error("Especificaciones no encontradas para este producto");
+        return;
+      }
+
+      setSpecData(specsData);
+      toast.success('Especificación generada exitosamente', { id: 'generateSpec' });
+    } catch (error: any) {
+      console.error('Error al generar especificación:', error);
+      toast.error(error.message || 'Error al generar especificación', { id: 'generateSpec' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-8 font-sans text-slate-700">
@@ -32,19 +142,41 @@ const CapturaOrden = () => {
                   <input 
                     type="text" 
                     placeholder="Buscar código o nombre del producto..." 
+                    value={formData.producto}
+                    onChange={(e) => handleInputChange('producto', e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputGroup label="Master ID" placeholder="Ej. MST-2024-8821" icon={<FiGrid />} />
-                <InputGroup label="Cliente" placeholder="Buscar cliente..." icon={<FiUser />} />
+                <InputGroup 
+                  label="Master ID" 
+                  placeholder="Ej. MST-2024-8821" 
+                  icon={<FiGrid />}
+                  value={formData.masterId}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('masterId', e.target.value)}
+                />
+                <InputGroup 
+                  label="Cliente" 
+                  placeholder="Buscar cliente..." 
+                  icon={<FiUser />}
+                  value={formData.cliente}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('cliente', e.target.value)}
+                  suggestions={clienteSuggestions}
+                  showDropdown={showClienteDropdown}
+                  onSelectCliente={selectCliente}
+                />
               </div>
 
               <div className="flex justify-end pt-2">
-                <button className="bg-[#ff4301] hover:bg-[#e63d01] text-white font-bold py-2.5 px-6 rounded-xl flex items-center gap-2 transition-all shadow-md shadow-orange-100">
-                  <FiZap className="fill-current" /> Generar Especificación
+                <button 
+                  onClick={handleGenerateSpec}
+                  disabled={loading}
+                  className="bg-[#ff4301] hover:bg-[#e63d01] disabled:bg-gray-400 text-white font-bold py-2.5 px-6 rounded-xl flex items-center gap-2 transition-all shadow-md shadow-orange-100 disabled:shadow-none"
+                >
+                  <FiZap className="fill-current" /> 
+                  {loading ? 'Generando...' : 'Generar Especificación'}
                 </button>
               </div>
             </div>
@@ -60,22 +192,16 @@ const CapturaOrden = () => {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Grilla de parámetros */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DisplayField label="DIÁMETRO INTERNO" value="508" unit="mm" />
-                <DisplayField label="DIÁMETRO EXTERNO" value="1,250" unit="mm" />
-                <DisplayField label="PESOS (MÍN/MÁX)" value="8,500 - 12,000" unit="kg" />
-                <DisplayField label="PIEZAS POR PAQUETE" value="25" unit="pzs" />
-                <DisplayField label="ANCHO TARIMA" value="1,100" unit="mm" />
-                <DisplayField label="EMBALAJE" value="Estándar Exportación" />
+                <DisplayField label="DIÁMETRO INTERNO" value={specData?.inner_diameter} unit="mm" />
+                <DisplayField label="DIÁMETRO EXTERNO" value={specData?.outer_diameter} unit="mm" />
+                <DisplayField label="PESOS (MÍN/MÁX)" value={`${specData?.minimum_shipping_weight || ''} - ${specData?.maximum_shipping_weight || ''}`} unit="ton" />
+                <DisplayField label="PIEZAS POR PAQUETE" value={specData?.pieces_per_package} unit="pzs" />
+                <DisplayField label="ANCHO TARIMA" value={specData?.maximum_pallet_width} unit="mm" />
+                <DisplayField label="EMBALAJE" value={specData?.shipping_packaging} />
               </div>
 
-              <div className="pt-2">
-                <label className="text-[10px] font-bold text-slate-400 block mb-1.5 tracking-widest uppercase">ID de Especificación</label>
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg font-bold text-slate-700">
-                  SPEC-9921-X
-                </div>
-              </div>
+              
 
               {/* Validación y Responsabilidad */}
               <div className="space-y-4">
@@ -94,9 +220,7 @@ const CapturaOrden = () => {
                       La validación implica conformidad operativa con los valores calculados por el modelo.
                     </p>
                   </div>
-                  <button className="text-slate-500 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-white transition-all">
-                    <FiRefreshCw /> Solicitar regeneración
-                  </button>
+                  
                 </div>
 
                 <div className="bg-orange-50/50 border-l-4 border-orange-500 p-4 rounded-r-xl">
@@ -120,16 +244,16 @@ const CapturaOrden = () => {
             <div>
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <h3 className="font-black text-slate-800 text-lg tracking-tight">ORDEN #48291-MX</h3>
+                  <h3 className="font-black text-slate-800 text-lg tracking-tight">ORDEN #{formData.masterId || 'NUEVA'}</h3>
                   <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Creado: Hoy, 09:30 AM</p>
                 </div>
                 <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase">Borrador</span>
               </div>
               <div className="mt-4">
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-orange-500 w-[66%]"></div>
+                  <div className="h-full bg-orange-500 transition-all duration-300" style={{width: `${calculateProgress()}%`}}></div>
                 </div>
-                <p className="text-right text-[10px] font-bold text-orange-600 mt-1.5">66% Completado</p>
+                <p className="text-right text-[10px] font-bold text-orange-600 mt-1.5">{calculateProgress()}% Completado</p>
               </div>
             </div>
 
@@ -137,15 +261,44 @@ const CapturaOrden = () => {
             <div className="space-y-4">
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Lista de Verificación</h4>
               <ul className="space-y-4">
-                <CheckItem done title="Datos Base Capturados" sub="Cliente y producto definidos" />
-                <CheckItem done title="Especificación Generada" sub="Valores calculados por modelo" />
-                <CheckItem done={isChecked} title="Validación Final" sub="Pendiente de envío" />
+                <CheckItem 
+                  done={formData.producto && formData.masterId && formData.cliente}
+                  title="Datos Base Capturados" 
+                  sub="Cliente y producto definidos" 
+                  formData={formData}
+                  specData={specData}
+                  isChecked={isChecked}
+                />
+                <CheckItem 
+                  done={!!specData}
+                  title="Especificación Generada" 
+                  sub="Valores calculados por modelo" 
+                  formData={formData}
+                  specData={specData}
+                  isChecked={isChecked}
+                />
+                <CheckItem 
+                  done={isChecked}
+                  title="Validación Final" 
+                  sub="Pendiente de envío" 
+                  formData={formData}
+                  specData={specData}
+                  isChecked={isChecked}
+                />
               </ul>
             </div>
 
             {/* Botones de Acción */}
             <div className="space-y-3 pt-4 border-t border-slate-100">
-              <button className="w-full bg-[#ff4301] hover:bg-[#e63d01] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-100 active:scale-95">
+              <button 
+                onClick={() => {}}
+                disabled={loading || !isChecked}
+                className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 ${
+                  loading || !isChecked 
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed shadow-none' 
+                    : 'bg-[#ff4301] hover:bg-[#e63d01] text-white shadow-orange-100'
+                }`}
+              >
                 <FiSave /> Generar Orden
               </button>
             </div>
@@ -158,16 +311,34 @@ const CapturaOrden = () => {
 
 // --- COMPONENTES AUXILIARES ---
 
-const InputGroup = ({ label, placeholder, icon }: any) => (
-  <div className="flex-1">
+const InputGroup = ({ label, placeholder, icon, value, onChange, suggestions, showDropdown, onSelectCliente }: any) => (
+  <div className="flex-1 relative">
     <label className="text-xs font-bold text-slate-500 block mb-1.5">{label}</label>
     <div className="relative">
       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</span>
       <input 
         type="text" 
         placeholder={placeholder} 
+        value={value}
+        onChange={onChange}
         className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
       />
+      
+      {/* Dropdown de sugerencias */}
+      {showDropdown && suggestions && suggestions.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+          {suggestions.map((cliente: any) => (
+            <button
+              key={cliente.id}
+              type="button"
+              onClick={() => onSelectCliente(cliente)}
+              className="w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors text-sm text-slate-700 border-b border-slate-100 last:border-b-0"
+            >
+              {cliente.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   </div>
 );
@@ -182,16 +353,38 @@ const DisplayField = ({ label, value, unit }: any) => (
   </div>
 );
 
-const CheckItem = ({ done, title, sub }: any) => (
-  <li className="flex gap-3">
-    <div className={`mt-1 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 ${done ? 'bg-green-50 border-green-500 text-green-600' : 'border-slate-200'}`}>
-      {done && <FiCheckCircle size={14} />}
-    </div>
-    <div>
-      <p className={`text-xs font-bold leading-none ${done ? 'text-slate-700' : 'text-slate-400'}`}>{title}</p>
-      <p className="text-[10px] text-slate-400 mt-1">{sub}</p>
-    </div>
-  </li>
-);
+const CheckItem = ({ done, title, sub, formData, specData, isChecked }: any) => {
+  const getCheckState = () => {
+    // Determinar el estado según el contexto
+    if (title === "Datos Base Capturados") {
+      return formData?.producto && formData?.masterId && formData?.cliente;
+    } else if (title === "Especificación Generada") {
+      return !!specData;
+    } else if (title === "Validación Final") {
+      return isChecked;
+    }
+    return false;
+  };
+
+  const isCompleted = getCheckState();
+
+  return (
+    <li className="flex gap-3">
+      <div className={`mt-1 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center border-2 ${
+        isCompleted 
+          ? 'bg-green-50 border-green-500 text-green-600' 
+          : 'border-slate-200'
+      }`}>
+        {isCompleted && <FiCheckCircle size={14} />}
+      </div>
+      <div>
+        <p className={`text-xs font-bold leading-none ${
+          isCompleted ? 'text-slate-700' : 'text-slate-400'
+        }`}>{title}</p>
+        <p className="text-[10px] text-slate-400 mt-1">{sub}</p>
+      </div>
+    </li>
+  );
+};
 
 export default CapturaOrden;
