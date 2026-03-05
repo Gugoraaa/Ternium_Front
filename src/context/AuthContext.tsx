@@ -18,7 +18,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const fetchUserData = async (currentUser: User | null) => {
-      
       if (!currentUser) {
         setUser(null);
         setLoading(false);
@@ -26,7 +25,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const roleId = currentUser.user_metadata?.role_id;
-      
 
       if (roleId) {
         const { data: roleData } = await supabase
@@ -39,27 +37,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           ...currentUser,
           role_name: roleData?.name || 'Sin Rol asignado',
         });
+        setLoading(false);
       } else {
         setUser(currentUser);
+        setLoading(false);
       }
-      
+
       setLoading(false);
     };
 
-    
-    const initializeAuth = async () => {
-      
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      const { data: { user: initialUser } } = await supabase.auth.getUser();
-      
-      await fetchUserData(initialUser);
-    };
-
-    initializeAuth();
+    supabase.auth.getUser().then(({ data: { user: initialUser } }) => {
+      fetchUserData(initialUser);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      
+      console.log('onAuthStateChange', event, session);
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') return;
       if (session?.user) {
         await fetchUserData(session.user);
       } else {
@@ -69,7 +62,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
