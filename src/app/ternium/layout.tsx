@@ -1,6 +1,5 @@
 import Sidebar from "@/components/Sidebar";
-import { AuthProvider } from "@/context/AuthContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import ProtectedRoute from "@/context/ProtectedRoute";
 import { Toaster } from "react-hot-toast";
 
 export default function RootLayout({
@@ -10,8 +9,8 @@ export default function RootLayout({
 }>) {
   return (
       <>
-        <AuthProvider>
-          <ProtectedRoute>
+        
+          <ProtectedRoute> 
             <Toaster 
             position="bottom-right" 
           toastOptions={{
@@ -31,7 +30,6 @@ export default function RootLayout({
               </div>
             </section>
           </ProtectedRoute>
-        </AuthProvider>
       </>
   );
 } 
