@@ -1,6 +1,6 @@
 import { IoChevronDown } from 'react-icons/io5';
 import { FaRegAddressCard, FaRegBuilding, FaGlobeAmericas } from 'react-icons/fa';
-import type { Client, CreateUserFormData, Role, UserCategory } from '../types';
+import type { Client, CreateUserFormData, Role, UserCategory } from '@/types/crearUsuario';
 
 interface DatosGeneralesSectionProps {
   formData: CreateUserFormData;
