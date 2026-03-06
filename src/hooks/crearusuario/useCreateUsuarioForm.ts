@@ -4,11 +4,19 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+<<<<<<< HEAD
 import type { CreateUserFormData, UserCategory } from '../types';
 import { INITIAL_FORM_DATA } from '../types';
 
 /**
  * Hook de formulario para la vista "Crear Usuario".  
+=======
+import type { CreateUserFormData, UserCategory } from '@/types/crearUsuario';
+import { INITIAL_FORM_DATA } from '@/types/crearUsuario';
+
+/**
+ * Hook de formulario para la vista "Crear Usuario".
+>>>>>>> e37413f4ece18f54408ae7e940e81eca9a74ba71
  * Maneja estado, validaciones y envío del formulario.
  */
 export function useCreateUsuarioForm() {
