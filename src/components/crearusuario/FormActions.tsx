@@ -5,7 +5,6 @@ interface FormActionsProps {
 }
 
 /**
- * Buena practica:
  * Este componente no sabe de router ni hooks de negocio.
  * Solo recibe callbacks por props, así queda desacoplado del contenedor.
  */
