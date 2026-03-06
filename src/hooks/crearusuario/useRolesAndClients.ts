@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
-import type { Role, Client } from '../types';
+import type { Role, Client } from '@/types/crearUsuario';
 
 /**
  * Hook de datos para la vista "Crear Usuario".
