@@ -1,7 +1,5 @@
 /**
- * Buena practica:
  * Este componente solo presenta UI estática (sin estado ni efectos).
- * Mantenerlo "tonto" lo hace fácil de reutilizar y probar.
  */
 export default function CrearUsuarioHeader() {
   return (
