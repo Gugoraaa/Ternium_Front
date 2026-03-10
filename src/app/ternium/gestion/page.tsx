@@ -1,36 +1,40 @@
 'use client';
 import { 
-  FiSearch, FiFilter, FiDownload, FiPrinter, 
-  FiClipboard, FiClock, FiCheckCircle, FiTrendingUp, FiPlus
+  FiSearch, FiDownload, FiPrinter,FiPlus
 } from 'react-icons/fi';
-import { HiOutlineExclamationCircle } from 'react-icons/hi';
 import { useRouter } from 'next/navigation';
+import { useOrders } from '@/hooks/orders/useOrders';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-// --- Interfaces ---
 interface Order {
   id: string;
   producto: string;
   cliente: string;
   fecha: string;
-  estado: 'Revisión Operador' | 'Aceptado' | 'Rechazado';
+  estado: 'Revisión Operador' | 'Aceptado' | 'Rechazado' | 'Revision cliente';
 }
-
-const orders: Order[] = [
-  { id: 'ORD-8823', producto: 'Acero Galvanizado', cliente: 'Cliente A - Constructora', fecha: '24/05/2024', estado: 'Revisión Operador' },
-  { id: 'ORD-8822', producto: 'Bobina Laminada', cliente: 'Cliente B - Metales Ind.', fecha: '23/05/2024', estado: 'Aceptado' },
-  { id: 'ORD-8821', producto: 'Perfiles Estructurales', cliente: 'Cliente C - Perfiles Nte.', fecha: '22/05/2024', estado: 'Rechazado' },
-  { id: 'ORD-8819', producto: 'Tubería Industrial', cliente: 'Distribuidora Central', fecha: '20/05/2024', estado: 'Aceptado' },
-  { id: 'ORD-8815', producto: 'Acero Inoxidable', cliente: 'Industrial S.A.', fecha: '19/05/2024', estado: 'Revisión Operador' },
-];
 
 export default function DashboardOrdenes() {
   const router = useRouter();
+  const { orders, loading, filteredOrders, filters, setFilters, resetFilters } = useOrders();
+
+  const uniqueStates = ['Todos los Estados', ...new Set(orders.map(order => order.estado))];
+  const uniqueClients = ['Todos los Clientes', ...new Set(orders.map(order => order.cliente))];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10 font-sans text-slate-700">
+        <div className="max-w-7xl mx-auto">
+          <LoadingSpinner size="large" message="Cargando órdenes..." fullScreen />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10 font-sans text-slate-700">
       <div className="max-w-7xl mx-auto">
         
-        {/* HEADER */}
         <header className="mb-8 flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-extrabold text-[#1e293b] tracking-tight">Seguimiento de Órdenes</h1>
@@ -47,36 +51,22 @@ export default function DashboardOrdenes() {
           </button>
         </header>
 
-        {/* TOP STATS CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatCard 
-            label="ÓRDENES TOTALES" 
-            value="1,284" 
-            subtext={<span className="flex items-center gap-1 text-green-600 font-bold"><FiTrendingUp /> +12% <span className="font-normal text-slate-400">desde el último mes</span></span>}
-            icon={<FiClipboard className="text-blue-600 text-xl" />}
-            iconBg="bg-blue-50"
-          />
-          <StatCard 
-            label="PENDIENTES REVISIÓN" 
-            value="42" 
-            subtext={<span className="flex items-center gap-1 text-orange-600 font-medium"><HiOutlineExclamationCircle /> Requiere atención inmediata</span>}
-            icon={<FiClock className="text-orange-500 text-xl" />}
-            iconBg="bg-orange-50"
-          />
-          <StatCard 
-            label="TASA DE ACEPTACIÓN" 
-            value="89.4%" 
-            subtext={<span className="flex items-center gap-1 text-green-600 font-medium"><FiCheckCircle /> Meta trimestral superada</span>}
-            icon={<FiCheckCircle className="text-green-500 text-xl" />}
-            iconBg="bg-green-50"
-          />
-        </div>
 
-        {/* FILTER BAR CONTAINER */}
+        
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <FilterSelect label="ESTADO" options={['Todos los Estados', 'Aceptado', 'Rechazado', 'En Revisión']} />
-            <FilterSelect label="CLIENTE" options={['Todos los Clientes', 'Cliente A', 'Cliente B']} />
+            <FilterSelect 
+              label="ESTADO" 
+              options={uniqueStates}
+              value={filters.estado}
+              onChange={(value) => setFilters({ estado: value })}
+            />
+            <FilterSelect 
+              label="CLIENTE" 
+              options={uniqueClients}
+              value={filters.cliente}
+              onChange={(value) => setFilters({ cliente: value })}
+            />
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-bold text-slate-400">BUSCAR POR ID</label>
               <div className="relative">
@@ -84,17 +74,24 @@ export default function DashboardOrdenes() {
                 <input 
                   type="text" 
                   placeholder="Ej: ORD-8823" 
+                  value={filters.searchId}
+                  onChange={(e) => setFilters({ searchId: e.target.value })}
                   className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 transition-all outline-none"
                 />
               </div>
             </div>
-            <button className="bg-[#ff4301] hover:bg-[#e63d01] text-white font-bold py-2.5 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors">
-              <FiFilter /> Aplicar Filtros
-            </button>
+            <div className="flex gap-2">
+              
+              <button 
+                onClick={resetFilters}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Limpiar
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* TABLE SECTION */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex justify-between items-center">
             <h2 className="font-bold text-slate-800">Órdenes Generadas</h2>
@@ -117,7 +114,7 @@ export default function DashboardOrdenes() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {orders.map((order) => (
+                {filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-6 py-4 font-bold text-sm text-slate-700">{order.id}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{order.producto}</td>
@@ -137,9 +134,10 @@ export default function DashboardOrdenes() {
             </table>
           </div>
 
-          {/* TABLE FOOTER / PAGINATION */}
           <div className="p-4 bg-[#fcfdfe] flex justify-between items-center border-t border-slate-100">
-            <span className="text-xs text-slate-400 font-medium">Mostrando 5 de 1,284 registros</span>
+            <span className="text-xs text-slate-400 font-medium">
+              Mostrando {filteredOrders.length} de {orders.length} registros
+            </span>
             <div className="flex items-center gap-2">
               <button className="px-3 py-1 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors">Anterior</button>
               <div className="flex gap-1">
@@ -159,29 +157,21 @@ export default function DashboardOrdenes() {
   );
 }
 
-// --- Componentes Atómicos ---
 
-const StatCard = ({ label, value, subtext, icon, iconBg }: any) => (
-  <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden group">
-    <div className="flex justify-between items-start">
-      <div>
-        <p className="text-[10px] font-bold text-slate-400 tracking-widest mb-2">{label}</p>
-        <h3 className="text-4xl font-extrabold text-slate-800 mb-3 tracking-tight">{value}</h3>
-      </div>
-      <div className={`${iconBg} p-3 rounded-lg group-hover:scale-110 transition-transform`}>
-        {icon}
-      </div>
-    </div>
-    <div className="text-[11px] border-t border-slate-50 pt-3 mt-1">
-      {subtext}
-    </div>
-  </div>
-);
 
-const FilterSelect = ({ label, options }: { label: string, options: string[] }) => (
+const FilterSelect = ({ label, options, value, onChange }: { 
+  label: string; 
+  options: string[]; 
+  value?: string; 
+  onChange?: (value: string) => void; 
+}) => (
   <div className="flex flex-col gap-2">
     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</label>
-    <select className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-orange-500 block w-full p-2.5 outline-none appearance-none cursor-pointer">
+    <select 
+      className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-orange-500 block w-full p-2.5 outline-none appearance-none cursor-pointer"
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+    >
       {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
     </select>
   </div>
@@ -191,7 +181,8 @@ const StatusBadge = ({ status }: { status: Order['estado'] }) => {
   const styles = {
     'Revisión Operador': 'bg-blue-100 text-blue-700',
     'Aceptado': 'bg-green-100 text-green-700',
-    'Rechazado': 'bg-red-100 text-red-700'
+    'Rechazado': 'bg-red-100 text-red-700',
+    'Revision cliente': 'bg-yellow-100 text-yellow-700'
   };
 
   return (
