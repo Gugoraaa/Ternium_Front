@@ -124,7 +124,10 @@ export default function DashboardOrdenes() {
                       <StatusBadge status={order.estado} />
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-[#ff4301] border border-[#ff4301] hover:bg-[#ff4301] hover:text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all">
+                      <button 
+                        onClick={() => router.push(`/ternium/gestion/orden/${order.id}`)}
+                        className="text-[#ff4301] border border-[#ff4301] hover:bg-[#ff4301] hover:text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      >
                         Ver Detalle
                       </button>
                     </td>
