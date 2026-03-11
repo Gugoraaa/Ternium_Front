@@ -162,6 +162,7 @@ const CapturaOrden = () => {
         .from('specs')
         .select('*')
         .eq('product_id', productDataResult.id)
+        .limit(1)
         .single();
 
       if (specsError || !specsData) {

@@ -12,13 +12,9 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useUser();
   const router = useRouter();
 
-  console.log('protected route', user, loading);
-
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push('/login');
-      }
+    if (!loading && !user) {
+      router.push('/login');
     }
   }, [user, loading, router]);
 
@@ -27,7 +23,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return null;
+    return <LoadingSpinner size="large" message="Redirigiendo..." fullScreen />;
   }
 
   return <>{children}</>;
