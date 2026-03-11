@@ -1,25 +1,159 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiSearch, FiFilter, FiEye } from 'react-icons/fi'; 
 import { HiOutlineExclamationCircle } from 'react-icons/hi';
+import { createClient } from '@/lib/supabase/client';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import { useRouter } from 'next/navigation';
 
-interface Orden {
+interface Order {
+  id: number;
+  worker_id: string;
+  client_id: string;
+  product_id: number;
+  specs_id: number;
+  reviewed_by: string | null;
+  created_at: string;
+  status: string;
+  contra_offer: boolean;
+  product?: {
+    id: number;
+    pt: string;
+    master: string;
+    name?: string;
+  };
+  client?: {
+    id: string;
+    name: string;
+  };
+}
+
+interface ClientWorker {
   id: string;
-  producto: string;
-  detalles: string;
-  fechaEnvio: string;
-  planta: string;
-  estado: 'Pendiente' | 'En revisión';
+  user_id: string;
+  client_id: string;
+  role: string;
+  created_at: string;
 }
 
 const SeguimientoOrdenes = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const supabase = createClient();
 
-  const ordenes: Orden[] = [
-    { id: 'ORD-8823', producto: 'Acero Galvanizado', detalles: 'Espesor: 0.5mm • Grado: G60', fechaEnvio: '24/05/2024', planta: 'Pesquería', estado: 'Pendiente' },
-    { id: 'ORD-8824', producto: 'Bobina Laminada', detalles: 'Ancho: 1200mm • Calidad: CQ', fechaEnvio: '23/05/2024', planta: 'Monterrey', estado: 'En revisión' },
-    { id: 'ORD-8819', producto: 'Placa de Acero', detalles: 'A-36 • Dimensiones: 4\' x 8\'', fechaEnvio: '22/05/2024', planta: 'Pesquería', estado: 'Pendiente' },
-  ];
+  useEffect(() => {
+    fetchClientOrders();
+  }, []);
+
+  async function fetchClientOrders() {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) {
+        setError('Usuario no autenticado');
+        return;
+      }
+
+      // Get client_worker info to find client_id
+      const { data: clientWorker, error: workerError } = await supabase
+        .from('client_workers')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (workerError) {
+        console.error('Error fetching client worker:', workerError);
+        if (workerError.code === 'PGRST116') {
+          setError('No se encontró asignación de cliente para este usuario');
+        } else {
+          throw workerError;
+        }
+        return;
+      }
+
+      // Get orders for this client
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          product:product_id (*),
+          client:client_id (*)
+        `)
+        .eq('client_id', clientWorker.client_id)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) throw ordersError;
+
+      setOrders(ordersData || []);
+    } catch (error) {
+      console.error('Error fetching client orders:', error);
+      setError('Error al cargar las órdenes');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function getStatusColor(status: string) {
+    const statusColors: Record<string, string> = {
+      'pending': 'bg-orange-50 text-orange-600 border-orange-100',
+      'approved': 'bg-green-50 text-green-600 border-green-100',
+      'rejected': 'bg-red-50 text-red-600 border-red-100',
+      'client_review': 'bg-blue-50 text-blue-600 border-blue-100'
+    };
+    return statusColors[status] || 'bg-gray-50 text-gray-600 border-gray-100';
+  }
+
+  function getStatusText(status: string) {
+    const statusTexts: Record<string, string> = {
+      'pending': 'Pendiente validación',
+      'approved': 'Aceptado',
+      'rejected': 'Rechazado',
+      'client_review': 'En revisión cliente'
+    };
+    return statusTexts[status] || 'Desconocido';
+  }
+
+  const filteredOrders = orders.filter(order => 
+    order.id.toString().includes(searchTerm.toLowerCase()) ||
+    order.product?.pt?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    order.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const pendingCount = orders.filter(order => order.status === 'pending').length;
+  const reviewCount = orders.filter(order => order.status === 'client_review').length;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 md:p-10 font-sans text-slate-800">
+        <LoadingSpinner size="large" message="Cargando órdenes..." fullScreen />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 md:p-10 font-sans text-slate-800">
+        <div className="max-w-7xl mx-auto text-center py-20">
+          <HiOutlineExclamationCircle className="text-6xl text-red-400 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">Error</h1>
+          <p className="text-slate-600 mb-6">{error}</p>
+          <button 
+            onClick={fetchClientOrders}
+            className="bg-[#ff4d17] hover:bg-[#e64010] text-white px-6 py-2 rounded-lg"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-10 font-sans text-slate-800">
@@ -30,13 +164,13 @@ const SeguimientoOrdenes = () => {
             Seguimiento Ordenes Cliente
           </h1>
           <p className="text-slate-500 text-sm mt-1">
-            Gestione y valide sus órdenes entrantes de manera eficiente para la planta Monterrey.
+            Gestione y valide sus órdenes entrantes de manera eficiente.
           </p>
         </div>
 
         <div className="flex gap-4 w-full md:w-auto">
-          <StatCard title="PENDIENTES" value="12" badge="+2" />
-          <StatCard title="EN REVISIÓN" value="05" />
+          <StatCard title="PENDIENTES" value={pendingCount.toString()} badge={pendingCount > 0 ? `+${pendingCount}` : undefined} />
+          <StatCard title="EN REVISIÓN" value={reviewCount.toString().padStart(2, '0')} />
         </div>
       </div>
 
@@ -47,7 +181,9 @@ const SeguimientoOrdenes = () => {
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2 text-[#f34d1c] font-bold">
             <HiOutlineExclamationCircle className="text-xl" />
-            <span className="text-sm">Órdenes Pendientes de Validación</span>
+            <span className="text-sm">
+              {pendingCount > 0 ? `Órdenes Pendientes de Validación (${pendingCount})` : 'No hay órdenes pendientes'}
+            </span>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -58,6 +194,7 @@ const SeguimientoOrdenes = () => {
                 placeholder="Buscar orden..."
                 className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-lg text-sm focus:ring-2 focus:ring-orange-500"
                 onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchTerm}
               />
             </div>
             <button className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors">
@@ -73,44 +210,58 @@ const SeguimientoOrdenes = () => {
               <tr className="text-[10px] uppercase text-slate-400 font-bold border-b border-slate-50 tracking-widest">
                 <th className="px-6 py-4 text-center">Orden ID</th>
                 <th className="px-6 py-4">Producto</th>
-                <th className="px-6 py-4">Fecha de Envío</th>
-                <th className="px-6 py-4">Planta Origen</th>
+                <th className="px-6 py-4">Fecha Creación</th>
+                <th className="px-6 py-4">Cliente</th>
                 <th className="px-6 py-4 text-center">Estado</th>
                 <th className="px-6 py-4 text-right">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {ordenes.map((orden) => (
-                <tr key={orden.id} className="hover:bg-slate-50/50 transition-all group">
-                  <td className="px-6 py-5 text-sm font-bold text-slate-700">{orden.id}</td>
-                  <td className="px-6 py-5">
-                    <div className="text-sm font-bold text-slate-900 leading-tight">{orden.producto}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{orden.detalles}</div>
-                  </td>
-                  <td className="px-6 py-5 text-sm text-slate-500">{orden.fechaEnvio}</td>
-                  <td className="px-6 py-5 text-sm text-slate-500">{orden.planta}</td>
-                  <td className="px-6 py-5">
-                    <StatusLabel status={orden.estado} />
-                  </td>
-                  <td className="px-6 py-5 text-right">
-                    <button className="inline-flex items-center gap-2 bg-[#ff4d17] hover:bg-[#e64010] text-white px-4 py-2 rounded-lg text-sm font-bold transition-all transform active:scale-95">
-                      Ver Orden <FiEye className="text-lg" />
-                    </button>
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                    {searchTerm ? 'No se encontraron órdenes que coincidan con la búsqueda' : 'No hay órdenes disponibles'}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-slate-50/50 transition-all group">
+                    <td className="px-6 py-5 text-sm font-bold text-slate-700">#{order.id}</td>
+                    <td className="px-6 py-5">
+                      <div className="text-sm font-bold text-slate-900 leading-tight">{order.product?.pt || 'N/A'}</div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">Master: {order.product?.master || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-5 text-sm text-slate-500">
+                      {order.created_at ? new Date(order.created_at).toLocaleDateString('es-ES') : 'N/A'}
+                    </td>
+                    <td className="px-6 py-5 text-sm text-slate-500">{order.client?.name || 'N/A'}</td>
+                    <td className="px-6 py-5">
+                      <StatusLabel status={order.status} />
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <button 
+                        onClick={() => router.push(`/ternium/clientes/orden/${order.id}`)}
+                        className="inline-flex items-center gap-2 bg-[#ff4d17] hover:bg-[#e64010] text-white px-4 py-2 rounded-lg text-sm font-bold transition-all transform active:scale-95"
+                      >
+                        Ver Orden <FiEye className="text-lg" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* PAGINATION */}
         <div className="p-4 border-t border-slate-50 flex justify-between items-center">
-          <span className="text-[11px] text-slate-400 font-medium">Mostrando 3 de 12 órdenes</span>
+          <span className="text-[11px] text-slate-400 font-medium">
+            Mostrando {filteredOrders.length} de {orders.length} órdenes
+          </span>
           <div className="flex items-center gap-1">
             <PagBtn label="<" disabled />
             <PagBtn label="1" active />
-            <PagBtn label="2" />
-            <PagBtn label=">" />
+            <PagBtn label=">" disabled={filteredOrders.length <= 10} />
           </div>
         </div>
       </div>
@@ -134,14 +285,33 @@ const StatCard = ({ title, value, badge }: { title: string, value: string, badge
   </div>
 );
 
-const StatusLabel = ({ status }: { status: 'Pendiente' | 'En revisión' }) => {
-  const isPendiente = status === 'Pendiente';
+const StatusLabel = ({ status }: { status: string }) => {
+  let colorClass = 'bg-gray-50 text-gray-600 border-gray-100';
+  let dotColor = 'bg-gray-500';
+  let text = 'Desconocido';
+  
+  if (status === 'Aceptado') {
+    colorClass = 'bg-green-50 text-green-600 border-green-100';
+    dotColor = 'bg-green-500';
+    text = 'Aceptado';
+  } else if (status === 'Rechazado') {
+    colorClass = 'bg-red-50 text-red-600 border-red-100';
+    dotColor = 'bg-red-500';
+    text = 'Rechazado';
+  } else if (status === 'Revision Cliente') {
+    colorClass = 'bg-blue-50 text-blue-600 border-blue-100';
+    dotColor = 'bg-blue-500';
+    text = 'Revision Cliente';
+  } else if (status === 'Revision Operador') {
+    colorClass = 'bg-orange-50 text-orange-600 border-orange-100';
+    dotColor = 'bg-orange-500';
+    text = 'Revision Operador';
+  }
+  
   return (
-    <div className={`mx-auto w-fit flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold border ${
-      isPendiente ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-blue-50 text-blue-600 border-blue-100'
-    }`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${isPendiente ? 'bg-orange-500' : 'bg-blue-500'}`} />
-      {isPendiente ? 'Pendiente validación' : 'En revisión cliente'}
+    <div className={`mx-auto w-fit flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold border ${colorClass}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+      {text}
     </div>
   );
 };

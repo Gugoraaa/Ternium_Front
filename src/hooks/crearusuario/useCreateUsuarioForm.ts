@@ -60,7 +60,7 @@ export function useCreateUsuarioForm() {
             second_name: formData.apellido,
             // Solo enviamos role_id para empleados.
             // Evita parsear rol cuando el usuario es externo (antes podía quedar NaN).
-            role_id: userCategory === 'employee' ? parseInt(formData.rol, 10) : undefined,
+            role_id: userCategory === 'employee' ? parseInt(formData.rol, 10) : 2,
           },
         },
       });

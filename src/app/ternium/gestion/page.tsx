@@ -11,14 +11,14 @@ interface Order {
   producto: string;
   cliente: string;
   fecha: string;
-  estado: 'Revisión Operador' | 'Aceptado' | 'Rechazado' | 'Revision cliente';
+  status: 'Revisión Operador' | 'Aceptado' | 'Rechazado' | 'Revision cliente';
 }
 
 export default function DashboardOrdenes() {
   const router = useRouter();
   const { orders, loading, filteredOrders, filters, setFilters, resetFilters } = useOrders();
 
-  const uniqueStates = ['Todos los Estados', ...new Set(orders.map(order => order.estado))];
+  const uniqueStates = ['Todos los Estados', ...new Set(orders.map(order => order.status))];
   const uniqueClients = ['Todos los Clientes', ...new Set(orders.map(order => order.cliente))];
 
   if (loading) {
@@ -121,7 +121,7 @@ export default function DashboardOrdenes() {
                     <td className="px-6 py-4 text-sm text-slate-500">{order.cliente}</td>
                     <td className="px-6 py-4 text-sm text-slate-400">{order.fecha}</td>
                     <td className="px-6 py-4">
-                      <StatusBadge status={order.estado} />
+                      <StatusBadge status={order.status} />
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button 
@@ -180,7 +180,7 @@ const FilterSelect = ({ label, options, value, onChange }: {
   </div>
 );
 
-const StatusBadge = ({ status }: { status: Order['estado'] }) => {
+const StatusBadge = ({ status }: { status: Order['status'] }) => {
   const styles = {
     'Revisión Operador': 'bg-blue-100 text-blue-700',
     'Aceptado': 'bg-green-100 text-green-700',

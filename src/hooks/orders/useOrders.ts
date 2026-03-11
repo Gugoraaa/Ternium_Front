@@ -9,7 +9,7 @@ interface Order {
   producto: string;
   cliente: string;
   fecha: string;
-  estado: 'Revisión Operador' | 'Aceptado' | 'Rechazado' | 'Revision cliente';
+  status: 'Revisión Operador' | 'Aceptado' | 'Rechazado' | 'Revision cliente';
 }
 
 interface UseOrdersReturn {
@@ -57,7 +57,7 @@ export function useOrders(): UseOrdersReturn {
         producto: order.product?.pt ,
         cliente: order.client.name ,
         fecha: order.created_at,
-        estado: mapOrderStatus(order.status)
+        status: order.status
       })) || [];
 
       setOrders(transformedOrders);
@@ -69,16 +69,7 @@ export function useOrders(): UseOrdersReturn {
     }
   }
 
-  function mapOrderStatus(status: string): Order['estado'] {
-    const statusMap: Record<string, Order['estado']> = {
-      'pending': 'Revisión Operador',
-      'approved': 'Aceptado',
-      'rejected': 'Rechazado',
-      'client_review': 'Revision cliente',
-      'review': 'Revisión Operador'
-    };
-    return statusMap[status] || 'Revisión Operador';
-  }
+  
 
   function setFilters(newFilters: Partial<UseOrdersReturn['filters']>) {
     setFiltersState(prev => ({ ...prev, ...newFilters }));
@@ -88,7 +79,7 @@ export function useOrders(): UseOrdersReturn {
     let filtered = [...orders];
 
     if (filters.estado !== 'Todos los Estados') {
-      filtered = filtered.filter(order => order.estado === filters.estado);
+      filtered = filtered.filter(order => order.status === filters.estado);
     }
 
     if (filters.cliente !== 'Todos los Clientes') {

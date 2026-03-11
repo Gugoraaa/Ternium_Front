@@ -30,6 +30,7 @@ interface OrderDetails {
   };
   specs?: {
     id: number;
+    product_id?: number;
     inner_diameter: number;
     outer_diameter: number;
     minimum_shipping_weight: number;
@@ -37,11 +38,8 @@ interface OrderDetails {
     pieces_per_package: number;
     maximum_pallet_width: number;
     shipping_packaging: string;
-    thickness?: number;
     width?: number;
-    coating?: string;
-    hardness?: string;
-    finish?: string;
+   
   };
 }
 
@@ -57,6 +55,7 @@ interface OrderOffer {
 
 interface OrderOfferSpecs {
   id: number;
+  product_id?: number;
   inner_diameter?: number;
   outer_diameter?: number;
   width?: number;
@@ -65,10 +64,7 @@ interface OrderOfferSpecs {
   pieces_per_package?: number;
   maximum_pallet_width?: number;
   shipping_packaging?: string;
-  thickness?: number;
-  coating?: string;
-  hardness?: string;
-  finish?: string;
+  
 }
 
 export default function OrdenDetail() {
@@ -78,6 +74,8 @@ export default function OrdenDetail() {
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [orderOffer, setOrderOffer] = useState<OrderOffer | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const canEdit = order?.status === 'Revision Operador';
 
   useEffect(() => {
     fetchOrderDetails();
@@ -108,7 +106,7 @@ export default function OrdenDetail() {
           .from('order_offers')
           .select(`
             *,
-            specs:order_offers_specs (*)
+            specs:new_specs_id (*)
           `)
           .eq('order_id', params.slug)
           .single();
@@ -147,7 +145,51 @@ export default function OrdenDetail() {
   }
 
   function isFieldModified(originalValue: any, newValue?: any) {
-    return newValue !== undefined && newValue !== null && originalValue !== newValue;
+    // Solo considerar modificado si ambos valores existen y son diferentes
+    return originalValue !== undefined && 
+           originalValue !== null && 
+           newValue !== undefined && 
+           newValue !== null && 
+           originalValue !== newValue;
+    
+  }
+
+  async function approveCounterOffer() {
+    if (!order) return;
+    
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'Aceptado' })
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      await supabase.from('specs').insert(orderOffer?.specs)
+
+      // Redirigir de vuelta a la lista de gestión
+      router.push('/ternium/gestion');
+    } catch (error) {
+      console.error('Error approving counter offer:', error);
+    }
+  }
+
+  async function rejectOrder() {
+    if (!order) return;
+    
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'Rechazado' })
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      // Redirigir de vuelta a la lista de gestión
+      router.push('/ternium/gestion');
+    } catch (error) {
+      console.error('Error rejecting order:', error);
+    }
   }
 
   function formatValue(value: any, unit: string = '') {
@@ -318,7 +360,10 @@ export default function OrdenDetail() {
                    <div className="p-4 rounded-xl border border-slate-50 bg-[#FBFBFC]">
                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Diámetro Interno</p>
                      <p className="text-lg font-bold text-slate-800 leading-none">
-                       {isFieldModified(order.specs?.inner_diameter, orderOffer?.specs?.inner_diameter) ? (
+                       {isFieldModified(
+                         Number(order.specs?.inner_diameter), 
+                         Number(orderOffer?.specs?.inner_diameter)
+                       ) ? (
                          <div className="inline-flex flex-col">
                            <span className="border-2 border-[#FF4D4D] text-[#FF4D4D] font-black px-4 py-1 rounded-lg text-base shadow-sm shadow-red-50">
                              {formatValue(orderOffer?.specs?.inner_diameter, ' mm')}
@@ -336,7 +381,10 @@ export default function OrdenDetail() {
                    <div className="p-4 rounded-xl border border-slate-50 bg-[#FBFBFC]">
                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Diámetro Externo</p>
                      <p className="text-lg font-bold text-slate-800 leading-none">
-                       {isFieldModified(order.specs?.outer_diameter, orderOffer?.specs?.outer_diameter) ? (
+                       {isFieldModified(
+                         Number(order.specs?.outer_diameter), 
+                         Number(orderOffer?.specs?.outer_diameter)
+                       ) ? (
                          <div className="inline-flex flex-col">
                            <span className="border-2 border-[#FF4D4D] text-[#FF4D4D] font-black px-4 py-1 rounded-lg text-base shadow-sm shadow-red-50">
                              {formatValue(orderOffer?.specs?.outer_diameter, ' mm')}
@@ -354,7 +402,10 @@ export default function OrdenDetail() {
                    <div className="p-4 rounded-xl border border-slate-50 bg-[#FBFBFC]">
                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Ancho</p>
                      <p className="text-lg font-bold text-slate-800 leading-none">
-                       {isFieldModified(order.specs?.width, orderOffer?.specs?.width) ? (
+                       {isFieldModified(
+                         Number(order.specs?.width), 
+                         Number(orderOffer?.specs?.width)
+                       ) ? (
                          <div className="inline-flex flex-col">
                            <span className="border-2 border-[#FF4D4D] text-[#FF4D4D] font-black px-4 py-1 rounded-lg text-base shadow-sm shadow-red-50">
                              {formatValue(orderOffer?.specs?.width, ' mm')}
@@ -372,7 +423,10 @@ export default function OrdenDetail() {
                    <div className="p-4 rounded-xl border border-slate-50 bg-[#FBFBFC]">
                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Peso Mínimo</p>
                      <p className="text-lg font-bold text-slate-800 leading-none">
-                       {isFieldModified(order.specs?.minimum_shipping_weight, orderOffer?.specs?.minimum_shipping_weight) ? (
+                       {isFieldModified(
+                         Number(order.specs?.minimum_shipping_weight), 
+                         Number(orderOffer?.specs?.minimum_shipping_weight)
+                       ) ? (
                          <div className="inline-flex flex-col">
                            <span className="border-2 border-[#FF4D4D] text-[#FF4D4D] font-black px-4 py-1 rounded-lg text-base shadow-sm shadow-red-50">
                              {formatValue(orderOffer?.specs?.minimum_shipping_weight, ' ton')}
@@ -390,7 +444,10 @@ export default function OrdenDetail() {
                    <div className="p-4 rounded-xl border border-slate-50 bg-[#FBFBFC]">
                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Peso Máximo</p>
                      <p className="text-lg font-bold text-slate-800 leading-none">
-                       {isFieldModified(order.specs?.maximum_shipping_weight, orderOffer?.specs?.maximum_shipping_weight) ? (
+                       {isFieldModified(
+                         Number(order.specs?.maximum_shipping_weight), 
+                         Number(orderOffer?.specs?.maximum_shipping_weight)
+                       ) ? (
                          <div className="inline-flex flex-col">
                            <span className="border-2 border-[#FF4D4D] text-[#FF4D4D] font-black px-4 py-1 rounded-lg text-base shadow-sm shadow-red-50">
                              {formatValue(orderOffer?.specs?.maximum_shipping_weight, ' ton')}
@@ -408,7 +465,10 @@ export default function OrdenDetail() {
                    <div className="p-4 rounded-xl border border-slate-50 bg-[#FBFBFC]">
                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Piezas por Paquete</p>
                      <p className="text-lg font-bold text-slate-800 leading-none">
-                       {isFieldModified(order.specs?.pieces_per_package, orderOffer?.specs?.pieces_per_package) ? (
+                       {isFieldModified(
+                         Number(order.specs?.pieces_per_package), 
+                         Number(orderOffer?.specs?.pieces_per_package)
+                       ) ? (
                          <div className="inline-flex flex-col">
                            <span className="border-2 border-[#FF4D4D] text-[#FF4D4D] font-black px-4 py-1 rounded-lg text-base shadow-sm shadow-red-50">
                              {formatValue(orderOffer?.specs?.pieces_per_package, ' pzs')}
@@ -426,7 +486,10 @@ export default function OrdenDetail() {
                    <div className="p-4 rounded-xl border border-slate-50 bg-[#FBFBFC]">
                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wide">Ancho Máximo Tarima</p>
                      <p className="text-lg font-bold text-slate-800 leading-none">
-                       {isFieldModified(order.specs?.maximum_pallet_width, orderOffer?.specs?.maximum_pallet_width) ? (
+                       {isFieldModified(
+                         Number(order.specs?.maximum_pallet_width), 
+                         Number(orderOffer?.specs?.maximum_pallet_width)
+                       ) ? (
                          <div className="inline-flex flex-col">
                            <span className="border-2 border-[#FF4D4D] text-[#FF4D4D] font-black px-4 py-1 rounded-lg text-base shadow-sm shadow-red-50">
                              {formatValue(orderOffer?.specs?.maximum_pallet_width, ' mm')}
@@ -480,23 +543,61 @@ export default function OrdenDetail() {
         </div>
 
         {/* ACCIONES */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-md flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="text-center md:text-left">
-            <h3 className="text-lg font-black text-slate-800 flex items-center justify-center md:justify-start gap-2">
-               <FiSettings className="text-slate-400" /> Acciones de Gestión
-            </h3>
-            <p className="text-xs text-slate-400 mt-1 font-medium italic">Gestiona el estado y aprobación de esta orden.</p>
+        {canEdit && (
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-md flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="text-center md:text-left">
+              <h3 className="text-lg font-black text-slate-800 flex items-center justify-center md:justify-start gap-2">
+                 <FiSettings className="text-slate-400" /> Acciones de Gestión
+              </h3>
+              <p className="text-xs text-slate-400 mt-1 font-medium italic">
+                {order?.contra_offer 
+                  ? "Revisa la contraoferta del cliente y toma una decisión." 
+                  : "Gestiona el estado y aprobación de esta orden."
+                }
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap justify-center gap-3 w-full md:w-auto">
+              {order?.contra_offer ? (
+                <>
+                  <button 
+                    onClick={approveCounterOffer}
+                    className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-green-100"
+                  >
+                    <HiOutlineCheckCircle className="text-lg" /> Aceptar Contraoferta
+                  </button>
+                  <button 
+                    onClick={rejectOrder}
+                    className="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-red-100"
+                  >
+                    <HiOutlineXCircle className="text-lg" /> Rechazar Contraoferta
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="flex-1 md:flex-none bg-[#FF4500] hover:bg-[#E63E00] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-orange-100">
+                    <HiOutlineCheckCircle className="text-lg" /> Aprobar Orden
+                  </button>
+                  <button className="flex-1 md:flex-none bg-[#475569] hover:bg-[#334155] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-slate-800">
+                    <HiOutlineXCircle className="text-lg" /> Rechazar Orden
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          
-          <div className="flex flex-wrap justify-center gap-3 w-full md:w-auto">
-            <button className="flex-1 md:flex-none bg-[#FF4500] hover:bg-[#E63E00] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-orange-100">
-              <HiOutlineCheckCircle className="text-lg" /> Aprobar Orden
-            </button>
-            <button className="flex-1 md:flex-none bg-[#475569] hover:bg-[#334155] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-slate-800">
-              <HiOutlineXCircle className="text-lg" /> Rechazar Orden
-            </button>
+        )}
+
+        {!canEdit && (
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-md">
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 bg-slate-100 text-slate-500 px-4 py-2 rounded-full text-sm font-medium mb-2">
+                <HiOutlineQuestionMarkCircle className="text-lg" />
+                Modo Lectura
+              </div>
+              <p className="text-slate-400 text-sm">Esta orden no está disponible para edición en estado actual.</p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
