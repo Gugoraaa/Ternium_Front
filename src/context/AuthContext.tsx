@@ -37,10 +37,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           ...currentUser,
           role_name: roleData?.name || 'Sin Rol asignado',
         });
-        setLoading(false);
       } else {
         setUser(currentUser);
-        setLoading(false);
       }
 
       setLoading(false);
@@ -52,7 +50,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('onAuthStateChange', event, session);
-      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') return;
       if (session?.user) {
         await fetchUserData(session.user);
       } else {
