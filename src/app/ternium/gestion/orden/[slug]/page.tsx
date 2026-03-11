@@ -126,23 +126,15 @@ export default function OrdenDetail() {
 
   function getStatusColor(status: string) {
     const statusColors: Record<string, string> = {
-      'pending': 'bg-orange-50 text-orange-600 border-orange-100',
-      'approved': 'bg-green-50 text-green-600 border-green-100',
-      'rejected': 'bg-red-50 text-red-600 border-red-100',
-      'client_review': 'bg-blue-50 text-blue-600 border-blue-100'
+      'Revision Operador': 'bg-orange-50 text-orange-600 border-orange-100',
+      'Aceptado': 'bg-green-50 text-green-600 border-green-100',
+      'Rechazado': 'bg-red-50 text-red-600 border-red-100',
+      'Revision Cliente': 'bg-blue-50 text-blue-600 border-blue-100'
     };
     return statusColors[status] || 'bg-gray-50 text-gray-600 border-gray-100';
   }
 
-  function getStatusText(status: string) {
-    const statusTexts: Record<string, string> = {
-      'pending': 'Revisión Operador',
-      'approved': 'Aceptado',
-      'rejected': 'Rechazado',
-      'client_review': 'Revisión Cliente'
-    };
-    return statusTexts[status] || 'Desconocido';
-  }
+
 
   function isFieldModified(originalValue: any, newValue?: any) {
     // Solo considerar modificado si ambos valores existen y son diferentes
@@ -262,10 +254,10 @@ export default function OrdenDetail() {
                 <FiTruck className="text-slate-300"/> {order.client?.name || 'N/A'}
               </p>
             </div>
-          </div>
-          <div className={`${getStatusColor(order.status)} text-[11px] font-bold px-4 py-1.5 rounded-full border flex items-center gap-2 shrink-0`}>
-            <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span> 
-            {getStatusText(order.status)}
+            <div className={`${getStatusColor(order.status)} text-[11px] font-bold px-4 py-1.5 rounded-full border flex items-center gap-2 shrink-0`}>
+              <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span> 
+              {order.status}
+            </div>
           </div>
         </div>
 

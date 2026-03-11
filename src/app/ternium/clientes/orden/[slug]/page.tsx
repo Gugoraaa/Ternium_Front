@@ -6,9 +6,7 @@ import {
   HiOutlineClipboardList, 
   HiOutlineSparkles, 
   HiOutlineExclamationCircle,
-  HiOutlineCheckCircle,
   HiOutlineMailOpen,
-  HiChevronDown,
   HiOutlineTrendingUp,
   HiOutlineX
 } from "react-icons/hi";
@@ -96,6 +94,26 @@ export default function DetalleEdicionOrden() {
         fetchOrderDetails();
     }, [params.slug]);
 
+    useEffect(() => {
+        if (!order) return;
+        
+        if (orderOffer?.specs) {
+            setEditedSpecs(orderOffer.specs);
+        } else {
+            setEditedSpecs({
+                inner_diameter: order.specs?.inner_diameter,
+                outer_diameter: order.specs?.outer_diameter,
+                width: order.specs?.width,
+                minimum_shipping_weight: order.specs?.minimum_shipping_weight,
+                maximum_shipping_weight: order.specs?.maximum_shipping_weight,
+                pieces_per_package: order.specs?.pieces_per_package,
+                maximum_pallet_width: order.specs?.maximum_pallet_width,
+                shipping_packaging: order.specs?.shipping_packaging,
+                thickness: order.specs?.thickness
+            });
+        }
+    }, [order, orderOffer]);
+
     async function fetchOrderDetails() {
         try {
             setLoading(true);
@@ -114,6 +132,7 @@ export default function DetalleEdicionOrden() {
             if (orderError) throw orderError;
             
             setOrder(orderData);
+          
 
             // Si hay contraoferta, buscar los detalles
             if (orderData?.contra_offer) {
@@ -144,10 +163,7 @@ export default function DetalleEdicionOrden() {
         }
     }
 
-    useEffect(() => {
-        if (!order) return;
-        setEditedSpecs({ ...(orderOffer?.specs ?? {}) });
-    }, [order, orderOffer]);
+    
 
     function resetToOriginalSpecs() {
         if (!order?.specs) return;
@@ -420,7 +436,7 @@ export default function DetalleEdicionOrden() {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Diámetro Interno (mm)</label>
               <input 
                 type="number" 
-                step="0.01"
+                step="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs.inner_diameter ?? demoOrderOffer?.specs?.inner_diameter ?? order.specs?.inner_diameter))}
                 onChange={(e) => {
@@ -447,7 +463,7 @@ export default function DetalleEdicionOrden() {
               </div>
               <input 
                 type="number" 
-                step="0.01"
+                step="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs.outer_diameter ?? demoOrderOffer?.specs?.outer_diameter ?? order.specs?.outer_diameter))}
                 onChange={(e) => {
@@ -471,7 +487,7 @@ export default function DetalleEdicionOrden() {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ancho (mm)</label>
               <input 
                 type="number" 
-                step="0.01"
+                step="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs.width ?? demoOrderOffer?.specs?.width ?? order.specs?.width))}
                 onChange={(e) => {
@@ -493,7 +509,7 @@ export default function DetalleEdicionOrden() {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peso Mínimo (kg)</label>
               <input 
                 type="number" 
-                step="0.01"
+                step="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs.minimum_shipping_weight ?? demoOrderOffer?.specs?.minimum_shipping_weight ?? order.specs?.minimum_shipping_weight))}
                 onChange={(e) => {
@@ -515,7 +531,7 @@ export default function DetalleEdicionOrden() {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peso Máximo (kg)</label>
               <input 
                 type="number" 
-                step="0.01"
+                step="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs.maximum_shipping_weight ?? demoOrderOffer?.specs?.maximum_shipping_weight ?? order.specs?.maximum_shipping_weight))}
                 onChange={(e) => {
@@ -559,7 +575,7 @@ export default function DetalleEdicionOrden() {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ancho Máximo Tarima (mm)</label>
               <input 
                 type="number" 
-                step="0.01"
+                step="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs.maximum_pallet_width ?? demoOrderOffer?.specs?.maximum_pallet_width ?? order.specs?.maximum_pallet_width))}
                 onChange={(e) => {

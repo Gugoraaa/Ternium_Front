@@ -9,7 +9,7 @@ interface Order {
   producto: string;
   cliente: string;
   fecha: string;
-  status: 'Revisión Operador' | 'Aceptado' | 'Rechazado' | 'Revision cliente';
+  status: 'Revision Operador' | 'Aceptado' | 'Rechazado' | 'Revision Cliente';
 }
 
 interface UseOrdersReturn {

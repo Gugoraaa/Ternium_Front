@@ -9,9 +9,11 @@ import { HiOutlineDocumentText } from 'react-icons/hi';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import { useUser } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const CapturaOrden = () => {
   const { user } = useUser();
+  const router = useRouter();
   
 
   const [isChecked, setIsChecked] = useState(false);
@@ -109,6 +111,7 @@ const CapturaOrden = () => {
       }
 
       toast.success('Orden generada exitosamente', { id: 'generateOrder' });
+      router.push(`/ternium/gestion`);
       
       // Limpiar formulario después de éxito
       setTimeout(() => {
@@ -158,7 +161,7 @@ const CapturaOrden = () => {
       const { data: specsData, error: specsError } = await supabase
         .from('specs')
         .select('*')
-        .eq('producto_id', productDataResult.id)
+        .eq('product_id', productDataResult.id)
         .single();
 
       if (specsError || !specsData) {

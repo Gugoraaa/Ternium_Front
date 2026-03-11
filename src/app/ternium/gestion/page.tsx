@@ -11,7 +11,7 @@ interface Order {
   producto: string;
   cliente: string;
   fecha: string;
-  status: 'Revisión Operador' | 'Aceptado' | 'Rechazado' | 'Revision cliente';
+  status: 'Revision Operador' | 'Aceptado' | 'Rechazado' | 'Revision Cliente';
 }
 
 export default function DashboardOrdenes() {
@@ -119,7 +119,14 @@ export default function DashboardOrdenes() {
                     <td className="px-6 py-4 font-bold text-sm text-slate-700">{order.id}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{order.producto}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{order.cliente}</td>
-                    <td className="px-6 py-4 text-sm text-slate-400">{order.fecha}</td>
+                    <td className="px-6 py-4 text-sm text-slate-400">
+                      {order.fecha ? new Date(order.fecha).toLocaleDateString('es-ES', { 
+                        day: 'numeric', 
+                        month: 'short', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      }) : 'N/A'}
+                    </td>
                     <td className="px-6 py-4">
                       <StatusBadge status={order.status} />
                     </td>
@@ -182,10 +189,10 @@ const FilterSelect = ({ label, options, value, onChange }: {
 
 const StatusBadge = ({ status }: { status: Order['status'] }) => {
   const styles = {
-    'Revisión Operador': 'bg-blue-100 text-blue-700',
+    'Revision Operador': 'bg-blue-100 text-blue-700',
     'Aceptado': 'bg-green-100 text-green-700',
     'Rechazado': 'bg-red-100 text-red-700',
-    'Revision cliente': 'bg-yellow-100 text-yellow-700'
+    'Revision Cliente': 'bg-yellow-100 text-yellow-700'
   };
 
   return (
