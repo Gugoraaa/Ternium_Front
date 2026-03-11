@@ -5,14 +5,8 @@ import {
 import { useRouter } from 'next/navigation';
 import { useOrders } from '@/hooks/orders/useOrders';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import StatusBadge from '@/components/StatusBadge';
 
-interface Order {
-  id: string;
-  producto: string;
-  cliente: string;
-  fecha: string;
-  status: 'Revision Operador' | 'Aceptado' | 'Rechazado' | 'Revision Cliente';
-}
 
 export default function DashboardOrdenes() {
   const router = useRouter();
@@ -187,17 +181,3 @@ const FilterSelect = ({ label, options, value, onChange }: {
   </div>
 );
 
-const StatusBadge = ({ status }: { status: Order['status'] }) => {
-  const styles = {
-    'Revision Operador': 'bg-blue-100 text-blue-700',
-    'Aceptado': 'bg-green-100 text-green-700',
-    'Rechazado': 'bg-red-100 text-red-700',
-    'Revision Cliente': 'bg-yellow-100 text-yellow-700'
-  };
-
-  return (
-    <span className={`mx-auto block w-fit px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${styles[status]}`}>
-      {status}
-    </span>
-  );
-};

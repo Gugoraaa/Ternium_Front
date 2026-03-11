@@ -7,72 +7,15 @@ import { HiOutlineDownload, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineQue
 import { FiSettings, FiPackage, FiTruck, FiActivity } from "react-icons/fi";
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
 
-interface OrderDetails {
-  id: number;
-  worker_id: string;
-  client_id: string;
-  product_id: number;
-  specs_id: number;
-  reviewed_by: string | null;
-  created_at: string;
-  status: string;
-  contra_offer: boolean;
-  product?: {
-    id: number;
-    pt: string;
-    master: string;
-    name?: string;
-  };
-  client?: {
-    id: string;
-    name: string;
-  };
-  specs?: {
-    id: number;
-    product_id?: number;
-    inner_diameter: number;
-    outer_diameter: number;
-    minimum_shipping_weight: number;
-    maximum_shipping_weight: number;
-    pieces_per_package: number;
-    maximum_pallet_width: number;
-    shipping_packaging: string;
-    width?: number;
-   
-  };
-}
-
-interface OrderOffer {
-  id: number;
-  order_id: number;
-  created_by: string;
-  note: string;
-  reviewed_at: string | null;
-  new_specs_id: number;
-  specs?: OrderOfferSpecs;
-}
-
-interface OrderOfferSpecs {
-  id: number;
-  product_id?: number;
-  inner_diameter?: number;
-  outer_diameter?: number;
-  width?: number;
-  minimum_shipping_weight?: number;
-  maximum_shipping_weight?: number;
-  pieces_per_package?: number;
-  maximum_pallet_width?: number;
-  shipping_packaging?: string;
-  
-}
 
 export default function OrdenDetail() {
   const params = useParams();
   const router = useRouter();
   const supabase = createClient();
   const [order, setOrder] = useState<OrderDetails | null>(null);
-  const [orderOffer, setOrderOffer] = useState<OrderOffer | null>(null);
+  const [orderOffer, setOrderOffer] = useState<OrderOfferWithSpecs | null>(null);
   const [loading, setLoading] = useState(true);
 
   const canEdit = order?.status === 'Revision Operador';
@@ -114,7 +57,23 @@ export default function OrdenDetail() {
         if (offerError) {
           console.error('Error fetching order offer:', offerError);
         } else {
-          setOrderOffer(offerData);
+          const mappedSpecs: OrderSpecs = offerData.specs ? {
+            id: undefined,
+            product_id: offerData.specs.product_id ?? undefined,
+            inner_diameter: offerData.specs.inner_diameter !== null && offerData.specs.inner_diameter !== undefined ? Number(offerData.specs.inner_diameter) : undefined,
+            outer_diameter: offerData.specs.outer_diameter !== null && offerData.specs.outer_diameter !== undefined ? Number(offerData.specs.outer_diameter) : undefined,
+            width: offerData.specs.width ?? undefined,
+            minimum_shipping_weight: offerData.specs.minimum_shipping_weight ?? undefined,
+            maximum_shipping_weight: offerData.specs.maximum_shipping_weight ?? undefined,
+            pieces_per_package: offerData.specs.pieces_per_package ?? undefined,
+            maximum_pallet_width: offerData.specs.maximum_pallet_width ?? undefined,
+            shipping_packaging: offerData.specs.shipping_packaging ?? undefined,
+          } : {};
+
+          setOrderOffer({
+            ...offerData,
+            specs: mappedSpecs,
+          });
         }
       }
     } catch (error) {
@@ -147,7 +106,7 @@ export default function OrdenDetail() {
   }
 
   async function approveCounterOffer() {
-    if (!order) return;
+    if (!order || !orderOffer?.specs) return;
     
     try {
       const { error } = await supabase
@@ -157,7 +116,20 @@ export default function OrdenDetail() {
 
       if (error) throw error;
 
-      await supabase.from('specs').insert(orderOffer?.specs)
+      // Insertar los specs de la contraoferta en la tabla specs
+      const specsToInsert = {
+        product_id: order.product_id,
+        inner_diameter: orderOffer.specs.inner_diameter ?? order.specs?.inner_diameter,
+        outer_diameter: orderOffer.specs.outer_diameter ?? order.specs?.outer_diameter,
+        width: orderOffer.specs.width ?? order.specs?.width,
+        minimum_shipping_weight: orderOffer.specs.minimum_shipping_weight ?? order.specs?.minimum_shipping_weight,
+        maximum_shipping_weight: orderOffer.specs.maximum_shipping_weight ?? order.specs?.maximum_shipping_weight,
+        pieces_per_package: orderOffer.specs.pieces_per_package ?? order.specs?.pieces_per_package,
+        maximum_pallet_width: orderOffer.specs.maximum_pallet_width ?? order.specs?.maximum_pallet_width,
+        shipping_packaging: orderOffer.specs.shipping_packaging ?? order.specs?.shipping_packaging,
+      };
+
+      await supabase.from('specs').insert(specsToInsert);
 
       // Redirigir de vuelta a la lista de gestión
       router.push('/ternium/gestion');
@@ -254,7 +226,7 @@ export default function OrdenDetail() {
                 <FiTruck className="text-slate-300"/> {order.client?.name || 'N/A'}
               </p>
             </div>
-            <div className={`${getStatusColor(order.status)} text-[11px] font-bold px-4 py-1.5 rounded-full border flex items-center gap-2 shrink-0`}>
+            <div className={`${getStatusColor(order.status || '')} text-[11px] font-bold px-4 py-1.5 rounded-full border flex items-center gap-2 shrink-0`}>
               <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span> 
               {order.status}
             </div>

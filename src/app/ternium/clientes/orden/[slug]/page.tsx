@@ -13,69 +13,10 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useUser } from '@/context/AuthContext';
+import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
 
 
 
-
-interface OrderDetails {
-  id: number;
-  worker_id: string;
-  client_id: string;
-  product_id: number;
-  specs_id: number;
-  reviewed_by: string | null;
-  created_at: string;
-  status: string;
-  contra_offer: boolean;
-  product?: {
-    id: number;
-    pt: string;
-    master: string;
-    name?: string;
-  };
-  client?: {
-    id: string;
-    name: string;
-  };
-  specs?: {
-    id: number;
-    inner_diameter: number;
-    outer_diameter: number;
-    minimum_shipping_weight: number;
-    maximum_shipping_weight: number;
-    pieces_per_package: number;
-    maximum_pallet_width: number;
-    shipping_packaging: string;
-    thickness?: number;
-    width?: number;
-    coating?: string;
-    hardness?: string;
-    finish?: string;
-  };
-}
-
-interface OrderOffer {
-  id: number;
-  order_id: number;
-  created_by: string;
-  note: string;
-  reviewed_at: string | null;
-  new_specs_id: number;
-  specs?: OrderOfferSpecs;
-}
-
-interface OrderOfferSpecs {
-  id?: number;
-  inner_diameter?: number;
-  outer_diameter?: number;
-  width?: number;
-  minimum_shipping_weight?: number;
-  maximum_shipping_weight?: number;
-  pieces_per_package?: number;
-  maximum_pallet_width?: number;
-  shipping_packaging?: string;
-  thickness?: number;
-}
 
 export default function DetalleEdicionOrden() {
     const { user } = useUser();
@@ -84,8 +25,8 @@ export default function DetalleEdicionOrden() {
     const supabase = createClient();
     const slug = params.slug;
     const [order, setOrder] = useState<OrderDetails | null>(null);
-    const [orderOffer, setOrderOffer] = useState<OrderOffer | null>(null);
-    const [editedSpecs, setEditedSpecs] = useState<OrderOfferSpecs>({});
+    const [orderOffer, setOrderOffer] = useState<OrderOfferWithSpecs | null>(null);
+    const [editedSpecs, setEditedSpecs] = useState<OrderSpecs | null>(null);
     const [loading, setLoading] = useState(true);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [clientNote, setClientNote] = useState<string>("");
@@ -101,6 +42,8 @@ export default function DetalleEdicionOrden() {
             setEditedSpecs(orderOffer.specs);
         } else {
             setEditedSpecs({
+                id: order.specs?.id,
+                product_id: order.specs?.product_id,
                 inner_diameter: order.specs?.inner_diameter,
                 outer_diameter: order.specs?.outer_diameter,
                 width: order.specs?.width,
@@ -109,7 +52,6 @@ export default function DetalleEdicionOrden() {
                 pieces_per_package: order.specs?.pieces_per_package,
                 maximum_pallet_width: order.specs?.maximum_pallet_width,
                 shipping_packaging: order.specs?.shipping_packaging,
-                thickness: order.specs?.thickness
             });
         }
     }, [order, orderOffer]);
@@ -168,6 +110,8 @@ export default function DetalleEdicionOrden() {
     function resetToOriginalSpecs() {
         if (!order?.specs) return;
         setEditedSpecs({
+            id: order.specs.id,
+            product_id: order.specs.product_id,
             inner_diameter: order.specs.inner_diameter,
             outer_diameter: order.specs.outer_diameter,
             width: order.specs.width,
@@ -176,8 +120,6 @@ export default function DetalleEdicionOrden() {
             pieces_per_package: order.specs.pieces_per_package,
             maximum_pallet_width: order.specs.maximum_pallet_width,
             shipping_packaging: order.specs.shipping_packaging,
-            thickness: order.specs.thickness,
-           
         });
     }
 
@@ -220,28 +162,27 @@ export default function DetalleEdicionOrden() {
             
 
             // Si hay cambios en los specs, insertarlos en order_offers_specs
-            const hasChanges = order.specs && Object.keys(editedSpecs).some(key => {
-                const specKey = key as keyof OrderOfferSpecs;
+            const hasChanges = order.specs && editedSpecs && Object.keys(editedSpecs).some(key => {
+                const specKey = key as keyof OrderSpecs;
                 const editedValue = editedSpecs[specKey];
-                const originalValue = order.specs![specKey as keyof typeof order.specs];
+                const originalValue = order.specs![specKey];
                 
                 return editedValue !== undefined && 
                        editedValue !== null && 
                        originalValue !== editedValue;
             });
 
-            if (hasChanges) {
+            if (hasChanges && editedSpecs) {
                 // Primero insertar todos los specs (modificados y no modificados) en order_offers_specs
                 const allSpecsToInsert = {
-                    inner_diameter: editedSpecs.inner_diameter ?? order.specs.inner_diameter,
-                    outer_diameter: editedSpecs.outer_diameter ?? order.specs.outer_diameter,
+                    inner_diameter: editedSpecs.inner_diameter ?? order.specs!.inner_diameter,
+                    outer_diameter: editedSpecs.outer_diameter ?? order.specs!.outer_diameter,
                     width: editedSpecs.width ?? order.specs.width,
                     minimum_shipping_weight: editedSpecs.minimum_shipping_weight ?? order.specs.minimum_shipping_weight,
                     maximum_shipping_weight: editedSpecs.maximum_shipping_weight ?? order.specs.maximum_shipping_weight,
                     pieces_per_package: editedSpecs.pieces_per_package ?? order.specs.pieces_per_package,
                     maximum_pallet_width: editedSpecs.maximum_pallet_width ?? order.specs.maximum_pallet_width,
                     shipping_packaging: editedSpecs.shipping_packaging ?? order.specs.shipping_packaging,
-                    thickness: editedSpecs.thickness ?? order.specs.thickness,
                     product_id: order.product_id
                 };
 
@@ -329,8 +270,8 @@ export default function DetalleEdicionOrden() {
         } as OrderOffer;
     }
 
-    const effectiveSpecs: OrderOfferSpecs = {
-        ...(demoOrderOffer?.specs ?? {}),
+    const effectiveSpecs: OrderSpecs = {
+        ...(orderOffer?.specs ?? {}),
         ...(editedSpecs ?? {})
     };
 
@@ -376,7 +317,6 @@ export default function DetalleEdicionOrden() {
       </div>
 
       <div className="max-w-5xl mx-auto space-y-6">
-        ``
         {/* CARD 1: RESUMEN DE ORDEN */}
         <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white">
@@ -394,7 +334,7 @@ export default function DetalleEdicionOrden() {
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Producto</p>
-              <p className="font-bold text-slate-800">{order.product?.name || order.product?.pt || 'N/A'}</p>
+              <p className="font-bold text-slate-800">{ order.product?.pt || 'N/A'}</p>
             </div>
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Fecha de Solicitud</p>
@@ -438,11 +378,11 @@ export default function DetalleEdicionOrden() {
                 type="number" 
                 step="1"
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs.inner_diameter ?? demoOrderOffer?.specs?.inner_diameter ?? order.specs?.inner_diameter))}
+                value={getInputValue((editedSpecs?.inner_diameter ?? demoOrderOffer?.specs?.inner_diameter ?? order.specs?.inner_diameter))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
-                    setEditedSpecs((prev) => ({ ...prev, inner_diameter: v === '' ? undefined : Number(v) }));
+                    setEditedSpecs((prev) => ({ ...(prev ?? {}), inner_diameter: v === '' ? undefined : Number(v) }));
                 }}
                 className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all ${
                     isFieldModified(order.specs?.inner_diameter, effectiveSpecs?.inner_diameter) ? 'bg-orange-50/30 border-2 border-orange-400' : ''
@@ -465,11 +405,11 @@ export default function DetalleEdicionOrden() {
                 type="number" 
                 step="1"
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs.outer_diameter ?? demoOrderOffer?.specs?.outer_diameter ?? order.specs?.outer_diameter))}
+                value={getInputValue((editedSpecs?.outer_diameter ?? demoOrderOffer?.specs?.outer_diameter ?? order.specs?.outer_diameter))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
-                    setEditedSpecs((prev) => ({ ...prev, outer_diameter: v === '' ? undefined : Number(v) }));
+                    setEditedSpecs((prev) => ({ ...(prev ?? {}), outer_diameter: v === '' ? undefined : Number(v) }));
                 }}
                 className={`w-full rounded-lg px-4 py-2.5 font-bold text-slate-800 focus:outline-none ${
                     isFieldModified(order.specs?.outer_diameter, effectiveSpecs?.outer_diameter) 
@@ -489,11 +429,11 @@ export default function DetalleEdicionOrden() {
                 type="number" 
                 step="1"
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs.width ?? demoOrderOffer?.specs?.width ?? order.specs?.width))}
+                value={getInputValue((editedSpecs?.width ?? demoOrderOffer?.specs?.width ?? order.specs?.width))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
-                    setEditedSpecs((prev) => ({ ...prev, width: v === '' ? undefined : Number(v) }));
+                    setEditedSpecs((prev) => ({ ...(prev ?? {}), width: v === '' ? undefined : Number(v) }));
                 }}
                 className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all ${
                     isFieldModified(order.specs?.width, effectiveSpecs?.width) ? 'bg-orange-50/30 border-2 border-orange-400' : ''
@@ -511,11 +451,11 @@ export default function DetalleEdicionOrden() {
                 type="number" 
                 step="1"
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs.minimum_shipping_weight ?? demoOrderOffer?.specs?.minimum_shipping_weight ?? order.specs?.minimum_shipping_weight))}
+                value={getInputValue((editedSpecs?.minimum_shipping_weight ?? demoOrderOffer?.specs?.minimum_shipping_weight ?? order.specs?.minimum_shipping_weight))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
-                    setEditedSpecs((prev) => ({ ...prev, minimum_shipping_weight: v === '' ? undefined : Number(v) }));
+                    setEditedSpecs((prev) => ({ ...(prev ?? {}), minimum_shipping_weight: v === '' ? undefined : Number(v) }));
                 }}
                 className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all ${
                     isFieldModified(order.specs?.minimum_shipping_weight, effectiveSpecs?.minimum_shipping_weight) ? 'bg-orange-50/30 border-2 border-orange-400' : ''
@@ -533,11 +473,11 @@ export default function DetalleEdicionOrden() {
                 type="number" 
                 step="1"
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs.maximum_shipping_weight ?? demoOrderOffer?.specs?.maximum_shipping_weight ?? order.specs?.maximum_shipping_weight))}
+                value={getInputValue((editedSpecs?.maximum_shipping_weight ?? demoOrderOffer?.specs?.maximum_shipping_weight ?? order.specs?.maximum_shipping_weight))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
-                    setEditedSpecs((prev) => ({ ...prev, maximum_shipping_weight: v === '' ? undefined : Number(v) }));
+                    setEditedSpecs((prev) => ({ ...(prev ?? {}), maximum_shipping_weight: v === '' ? undefined : Number(v) }));
                 }}
                 className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all ${
                     isFieldModified(order.specs?.maximum_shipping_weight, effectiveSpecs?.maximum_shipping_weight) ? 'bg-orange-50/30 border-2 border-orange-400' : ''
@@ -555,11 +495,11 @@ export default function DetalleEdicionOrden() {
                 type="number" 
                 step="1"
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs.pieces_per_package ?? demoOrderOffer?.specs?.pieces_per_package ?? order.specs?.pieces_per_package))}
+                value={getInputValue((editedSpecs?.pieces_per_package ?? demoOrderOffer?.specs?.pieces_per_package ?? order.specs?.pieces_per_package))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
-                    setEditedSpecs((prev) => ({ ...prev, pieces_per_package: v === '' ? undefined : Number(v) }));
+                    setEditedSpecs((prev) => ({ ...(prev ?? {}), pieces_per_package: v === '' ? undefined : Number(v) }));
                 }}
                 className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all ${
                     isFieldModified(order.specs?.pieces_per_package, effectiveSpecs?.pieces_per_package) ? 'bg-orange-50/30 border-2 border-orange-400' : ''
@@ -577,11 +517,11 @@ export default function DetalleEdicionOrden() {
                 type="number" 
                 step="1"
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs.maximum_pallet_width ?? demoOrderOffer?.specs?.maximum_pallet_width ?? order.specs?.maximum_pallet_width))}
+                value={getInputValue((editedSpecs?.maximum_pallet_width ?? demoOrderOffer?.specs?.maximum_pallet_width ?? order.specs?.maximum_pallet_width))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
-                    setEditedSpecs((prev) => ({ ...prev, maximum_pallet_width: v === '' ? undefined : Number(v) }));
+                    setEditedSpecs((prev) => ({ ...(prev ?? {}), maximum_pallet_width: v === '' ? undefined : Number(v) }));
                 }}
                 className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all ${
                     isFieldModified(order.specs?.maximum_pallet_width, effectiveSpecs?.maximum_pallet_width) ? 'bg-orange-50/30 border-2 border-orange-400' : ''
@@ -598,11 +538,11 @@ export default function DetalleEdicionOrden() {
               <input 
                 type="text" 
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs.shipping_packaging ?? demoOrderOffer?.specs?.shipping_packaging ?? order.specs?.shipping_packaging))}
+                value={getInputValue((editedSpecs?.shipping_packaging ?? demoOrderOffer?.specs?.shipping_packaging ?? order.specs?.shipping_packaging))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
-                    setEditedSpecs((prev) => ({ ...prev, shipping_packaging: v === '' ? undefined : v }));
+                    setEditedSpecs((prev) => ({ ...(prev ?? {}), shipping_packaging: v === '' ? undefined : v }));
                 }}
                 className={`w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all ${
                     isFieldModified(order.specs?.shipping_packaging, effectiveSpecs?.shipping_packaging) ? 'bg-orange-50/30 border-2 border-orange-400' : ''
@@ -861,7 +801,7 @@ export default function DetalleEdicionOrden() {
                 
                 <div className="bg-slate-50 rounded-lg p-3 text-sm text-slate-600">
                   <p className="font-medium mb-1">Orden #{order?.id}</p>
-                  <p className="text-xs">{order?.product?.name || order?.product?.pt}</p>
+                  <p className="text-xs">{order?.product?.pt}</p>
                 </div>
               </div>
               
