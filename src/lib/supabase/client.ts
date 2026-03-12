@@ -9,6 +9,7 @@ export function createClient() {
         secure: true,
         sameSite: 'lax',
         path: '/',
+        
       },
     }
   )
