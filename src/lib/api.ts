@@ -1,9 +1,9 @@
-import axios from "axios";
+import axios from 'axios'
 
 const baseURL =
-  process.env.NODE_ENV === "production"
+  process.env.NODE_ENV === 'production'
     ? process.env.NEXT_PUBLIC_PRODUCTION_API
-    : "http://localhost:4000";
+    : 'http://localhost:4000'
 
 const api = axios.create({
   baseURL,
