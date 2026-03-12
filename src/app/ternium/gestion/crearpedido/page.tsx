@@ -27,6 +27,10 @@ const CapturaOrden = () => {
   const [loading, setLoading] = useState(false);
   const [clienteSuggestions, setClienteSuggestions] = useState<any[]>([]);
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [productSuggestions, setProductSuggestions] = useState<any[]>([]);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [masterSuggestions, setMasterSuggestions] = useState<any[]>([]);
+  const [showMasterDropdown, setShowMasterDropdown] = useState(false);
   const [productData, setProductData] = useState<any>(null);
   const supabase = createClient();
 
@@ -41,10 +45,10 @@ const CapturaOrden = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
-    if (field === 'cliente') {
-      searchClientes(value);
-    }
+
+    if (field === 'cliente') searchClientes(value);
+    else if (field === 'producto') searchProductos(value);
+    else if (field === 'masterId') searchMasters(value, formData.producto);
   };
 
   const searchClientes = async (query: string) => {
@@ -70,13 +74,56 @@ const CapturaOrden = () => {
   };
 
   const selectCliente = (cliente: any) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      cliente: cliente.name,
-      clienteId: cliente.id 
-    }));
+    setFormData(prev => ({ ...prev, cliente: cliente.name, clienteId: cliente.id }));
     setShowClienteDropdown(false);
     setClienteSuggestions([]);
+  };
+
+  const searchProductos = async (query: string) => {
+    try {
+      let req = supabase.from('product').select('pt').limit(8);
+      if (query.length > 0) req = req.ilike('pt', `%${query}%`);
+
+      const { data, error } = await req;
+      if (error) throw error;
+
+      const unique = [...new Set((data || []).map((p: any) => p.pt))].map(pt => ({ pt }));
+      setProductSuggestions(unique);
+      setShowProductDropdown(unique.length > 0);
+    } catch (error) {
+      console.error('Error al buscar productos:', error);
+    }
+  };
+
+  const selectProducto = (pt: string) => {
+    setFormData(prev => ({ ...prev, producto: pt, masterId: '' }));
+    setShowProductDropdown(false);
+    setProductSuggestions([]);
+  };
+
+  const searchMasters = async (query: string, currentPt?: string) => {
+    try {
+      let req = supabase.from('product').select('master').limit(8);
+      if (query.length > 0) req = req.ilike('master', `%${query}%`);
+
+      const pt = currentPt ?? formData.producto;
+      if (pt) req = req.eq('pt', pt);
+
+      const { data, error } = await req;
+      if (error) throw error;
+
+      const unique = [...new Set((data || []).map((p: any) => p.master))].map(m => ({ master: m }));
+      setMasterSuggestions(unique);
+      setShowMasterDropdown(unique.length > 0);
+    } catch (error) {
+      console.error('Error al buscar masters:', error);
+    }
+  };
+
+  const selectMaster = (master: string) => {
+    setFormData(prev => ({ ...prev, masterId: master }));
+    setShowMasterDropdown(false);
+    setMasterSuggestions([]);
   };
 
   const handleGenerateOrder = async () => {
@@ -204,8 +251,25 @@ const CapturaOrden = () => {
                     placeholder="Buscar código o nombre del producto..." 
                     value={formData.producto}
                     onChange={(e) => handleInputChange('producto', e.target.value)}
+                    onFocus={() => searchProductos(formData.producto)}
+                    onBlur={() => setTimeout(() => setShowProductDropdown(false), 150)}
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
                   />
+                  {showProductDropdown && productSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                      {productSuggestions.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => selectProducto(item.pt)}
+                          className="w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors text-sm text-slate-700 border-b border-slate-100 last:border-b-0"
+                        >
+                          {item.pt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -216,6 +280,12 @@ const CapturaOrden = () => {
                   icon={<FiGrid />}
                   value={formData.masterId}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('masterId', e.target.value)}
+                  onFocus={() => searchMasters(formData.masterId, formData.producto)}
+                  onBlur={() => setTimeout(() => setShowMasterDropdown(false), 150)}
+                  suggestions={masterSuggestions}
+                  showDropdown={showMasterDropdown}
+                  onSelect={(item: any) => selectMaster(item.master)}
+                  getSuggestionLabel={(item: any) => item.master}
                 />
                 <InputGroup 
                   label="Cliente" 
@@ -223,9 +293,12 @@ const CapturaOrden = () => {
                   icon={<FiUser />}
                   value={formData.cliente}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('cliente', e.target.value)}
+                  onFocus={() => searchClientes(formData.cliente)}
+                  onBlur={() => setTimeout(() => setShowClienteDropdown(false), 150)}
                   suggestions={clienteSuggestions}
                   showDropdown={showClienteDropdown}
-                  onSelectCliente={selectCliente}
+                  onSelect={selectCliente}
+                  getSuggestionLabel={(item: any) => item.name}
                 />
               </div>
 
@@ -371,7 +444,7 @@ const CapturaOrden = () => {
 
 // --- COMPONENTES AUXILIARES ---
 
-const InputGroup = ({ label, placeholder, icon, value, onChange, suggestions, showDropdown, onSelectCliente }: any) => (
+const InputGroup = ({ label, placeholder, icon, value, onChange, onFocus, onBlur, suggestions, showDropdown, onSelect, getSuggestionLabel }: any) => (
   <div className="flex-1 relative">
     <label className="text-xs font-bold text-slate-500 block mb-1.5">{label}</label>
     <div className="relative">
@@ -381,20 +454,21 @@ const InputGroup = ({ label, placeholder, icon, value, onChange, suggestions, sh
         placeholder={placeholder} 
         value={value}
         onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
         className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
       />
-      
-      {/* Dropdown de sugerencias */}
       {showDropdown && suggestions && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-          {suggestions.map((cliente: any) => (
+          {suggestions.map((item: any, idx: number) => (
             <button
-              key={cliente.id}
+              key={item.id ?? idx}
               type="button"
-              onClick={() => onSelectCliente(cliente)}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onSelect(item)}
               className="w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors text-sm text-slate-700 border-b border-slate-100 last:border-b-0"
             >
-              {cliente.name}
+              {getSuggestionLabel ? getSuggestionLabel(item) : item.name}
             </button>
           ))}
         </div>
