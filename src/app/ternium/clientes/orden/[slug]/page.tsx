@@ -12,6 +12,7 @@ import {
 } from "react-icons/hi";
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import AcceptOrderButton from '@/components/AcceptOrderButton';
 import { useUser } from '@/context/AuthContext';
 import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
 
@@ -230,24 +231,7 @@ export default function DetalleEdicionOrden() {
         }
     }
 
-    async function acceptOrder() {
-        if (!order) return;
-        
-        try {
-            const { error } = await supabase
-                .from('orders')
-                .update({ status: 'Aceptado' })
-                .eq('id', order.id);
-
-            if (error) throw error;
-
-            // Redirigir a la lista de órdenes
-            router.push('/ternium/clientes');
-        } catch (error) {
-            console.error('Error accepting order:', error);
-        }
-    }
-
+    
     function openRejectModal() {
         setShowRejectModal(true);
     }
@@ -753,12 +737,14 @@ export default function DetalleEdicionOrden() {
         {/* ACCIONES FINALES */}
         {canEdit && (
           <div className="flex flex-col md:flex-row justify-end gap-4 pt-4">
-            <button 
-              onClick={acceptOrder}
+            <AcceptOrderButton
+              order={order}
+              orderOffer={orderOffer}
+              variant="clientes"
               className="bg-green-600 hover:bg-green-700 text-white px-10 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-green-100"
             >
               Aceptar
-            </button>
+            </AcceptOrderButton>
             <button 
               onClick={openRejectModal}
               className="bg-orange-500 text-white px-10 py-3 rounded-xl font-bold text-sm hover:bg-orange-600 transition-all shadow-lg shadow-orange-100"

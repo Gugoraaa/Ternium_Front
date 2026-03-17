@@ -7,6 +7,7 @@ import { HiOutlineDownload, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineQue
 import { FiSettings, FiPackage, FiTruck, FiActivity } from "react-icons/fi";
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import AcceptOrderButton from '@/components/AcceptOrderButton';
 import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
 
 
@@ -105,39 +106,7 @@ export default function OrdenDetail() {
     
   }
 
-  async function approveCounterOffer() {
-    if (!order || !orderOffer?.specs) return;
-    
-    try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status: 'Aceptado' })
-        .eq('id', order.id);
-
-      if (error) throw error;
-
-      // Insertar los specs de la contraoferta en la tabla specs
-      const specsToInsert = {
-        product_id: order.product_id,
-        inner_diameter: orderOffer.specs.inner_diameter ?? order.specs?.inner_diameter,
-        outer_diameter: orderOffer.specs.outer_diameter ?? order.specs?.outer_diameter,
-        width: orderOffer.specs.width ?? order.specs?.width,
-        minimum_shipping_weight: orderOffer.specs.minimum_shipping_weight ?? order.specs?.minimum_shipping_weight,
-        maximum_shipping_weight: orderOffer.specs.maximum_shipping_weight ?? order.specs?.maximum_shipping_weight,
-        pieces_per_package: orderOffer.specs.pieces_per_package ?? order.specs?.pieces_per_package,
-        maximum_pallet_width: orderOffer.specs.maximum_pallet_width ?? order.specs?.maximum_pallet_width,
-        shipping_packaging: orderOffer.specs.shipping_packaging ?? order.specs?.shipping_packaging,
-      };
-
-      await supabase.from('specs').insert(specsToInsert);
-
-      // Redirigir de vuelta a la lista de gestión
-      router.push('/ternium/gestion');
-    } catch (error) {
-      console.error('Error approving counter offer:', error);
-    }
-  }
-
+  
   async function rejectOrder() {
     if (!order) return;
     
@@ -524,12 +493,14 @@ export default function OrdenDetail() {
             <div className="flex flex-wrap justify-center gap-3 w-full md:w-auto">
               {order?.contra_offer ? (
                 <>
-                  <button 
-                    onClick={approveCounterOffer}
+                  <AcceptOrderButton
+                    order={order}
+                    orderOffer={orderOffer}
+                    variant="gestion"
                     className="flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-green-100"
                   >
                     <HiOutlineCheckCircle className="text-lg" /> Aceptar Contraoferta
-                  </button>
+                  </AcceptOrderButton>
                   <button 
                     onClick={rejectOrder}
                     className="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-red-100"
@@ -539,9 +510,14 @@ export default function OrdenDetail() {
                 </>
               ) : (
                 <>
-                  <button className="flex-1 md:flex-none bg-[#FF4500] hover:bg-[#E63E00] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-orange-100">
+                  <AcceptOrderButton
+                    order={order}
+                    orderOffer={orderOffer}
+                    variant="gestion"
+                    className="flex-1 md:flex-none bg-[#FF4500] hover:bg-[#E63E00] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-orange-100"
+                  >
                     <HiOutlineCheckCircle className="text-lg" /> Aprobar Orden
-                  </button>
+                  </AcceptOrderButton>
                   <button className="flex-1 md:flex-none bg-[#475569] hover:bg-[#334155] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-slate-800">
                     <HiOutlineXCircle className="text-lg" /> Rechazar Orden
                   </button>
