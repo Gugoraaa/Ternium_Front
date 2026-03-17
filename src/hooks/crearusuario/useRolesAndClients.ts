@@ -29,7 +29,7 @@ export function useRolesAndClients() {
        * Aunque `clients.id` en BD sea UUID, en frontend llega como string.
        * Por eso en `types.ts` usamos `Client.id: string` para evitar depender
        * de tipos de Node (`crypto.UUID`) en componentes cliente.
-       * */ 
+       * */
       if (rolesRes.data) setRoles(rolesRes.data);
       if (clientsRes.data) setClients(clientsRes.data);
     } catch (err) {
@@ -40,9 +40,21 @@ export function useRolesAndClients() {
     }
   }
 
+  const [sessionReady, setSessionReady] = useState<boolean | null>(null);
+
   useEffect(() => {
-    fetchData();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        setSessionReady(!!session);
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (sessionReady === true) fetchData();
+    else if (sessionReady === false) setLoading(false);
+  }, [sessionReady]);
 
   return { roles, clients, loading };
 }
