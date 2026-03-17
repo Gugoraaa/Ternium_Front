@@ -341,21 +341,21 @@ export type Database = {
           id: number
           note: string | null
           responsible: string | null
-          status: string | null
+          status: Database["public"]["Enums"]["programing-status-enum"] | null
         }
         Insert: {
           assigned_date?: string | null
           id?: number
           note?: string | null
           responsible?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["programing-status-enum"] | null
         }
         Update: {
           assigned_date?: string | null
           id?: number
           note?: string | null
           responsible?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["programing-status-enum"] | null
         }
         Relationships: [
           {
@@ -510,6 +510,7 @@ export type Database = {
         | "Rechazado"
         | "Revision Cliente"
         | "Revision Operador"
+      "programing-status-enum": "Aceptado" | "Sin asignar" | "Reasignado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -643,6 +644,7 @@ export const Constants = {
         "Revision Cliente",
         "Revision Operador",
       ],
+      "programing-status-enum": ["Aceptado", "Sin asignar", "Reasignado"],
     },
   },
 } as const
