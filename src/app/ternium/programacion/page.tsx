@@ -17,21 +17,7 @@ export default function ProgramacionPage() {
     assignOrder
   } = useProgrammingData();
 
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<number | null>(null);
-  const [responsibleInput, setResponsibleInput] = useState('');
-
-  const handleAssign = async () => {
-    if (selectedOrder && responsibleInput) {
-      const success = await assignOrder(selectedOrder, responsibleInput);
-      if (success) {
-        setShowAssignModal(false);
-        setSelectedOrder(null);
-        setResponsibleInput('');
-      }
-    }
-  };
-
+  
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '—';
     return new Date(dateString).toLocaleDateString('es-ES', {
@@ -86,21 +72,7 @@ export default function ProgramacionPage() {
 
         {/* Filters */}
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">BUSCAR ORDEN</label>
-              <div className="relative">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Buscar por ID de Orden..."
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 transition-all outline-none"
-                  value={filters.search}
-                  onChange={(e) => updateFilters({ search: e.target.value })}
-                />
-              </div>
-            </div>
-            
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ESTADO ASIGNACIÓN</label>
               <select
@@ -205,22 +177,12 @@ export default function ProgramacionPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {order.programing_instruction?.status === 'Sin asignar' ? (
-                        <button
-                          onClick={() => {
-                            setSelectedOrder(order.id);
-                            setShowAssignModal(true);
-                          }}
-                          className="text-[#ff4301] border border-[#ff4301] hover:bg-[#ff4301] hover:text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
-                        >
-                          Asignar
-                        </button>
-                      ) : (
-                        <button className="text-slate-600 hover:text-slate-800 font-medium flex items-center gap-1 justify-end">
-                          <FiEdit className="w-3 h-3" />
-                          Editar
-                        </button>
-                      )}
+                      <button 
+                        onClick={() => window.location.href = `/ternium/programacion/editar/${order.id}`}
+                        className="text-[#ff4301] border border-[#ff4301] hover:bg-[#ff4301] hover:text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      >
+                        {order.programing_instruction?.status === 'Sin asignar' ? 'Asignar' : 'Editar'}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -270,45 +232,6 @@ export default function ProgramacionPage() {
             </div>
           </div>
         </div>
-
-        {/* Assign Modal */}
-        {showAssignModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
-              <h3 className="text-lg font-semibold mb-4 text-slate-800">Asignar Orden</h3>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Responsable
-                </label>
-                <input
-                  type="text"
-                  placeholder="Nombre del responsable"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 transition-all outline-none"
-                  value={responsibleInput}
-                  onChange={(e) => setResponsibleInput(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => {
-                    setShowAssignModal(false);
-                    setSelectedOrder(null);
-                    setResponsibleInput('');
-                  }}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAssign}
-                  className="px-4 py-2 bg-[#ff4301] hover:bg-[#e63d01] text-white font-bold rounded-lg transition-all"
-                >
-                  Asignar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

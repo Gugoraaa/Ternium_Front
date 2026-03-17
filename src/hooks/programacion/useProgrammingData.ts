@@ -36,10 +36,7 @@ export function useProgrammingData() {
         .eq('status', 'Aceptado');  
         
 
-      // Apply search filter
-      if (filters.search) {
-        query = query.ilike('id::text', `%${filters.search}%`);
-      }
+     
 
       // Apply assignment status filter
       if (filters.assignmentStatus !== 'Todos') {
