@@ -34,7 +34,7 @@ export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const { user } = useUser();
+  const { user, loading } = useUser();
   const supabase = createClient();
 
   const handleSignOut = async () => {
@@ -46,10 +46,8 @@ export default function Sidebar() {
     }
   };
 
-
   useEffect(() => {
     setMounted(true);
-    
   }, []);
 
   return (
@@ -58,8 +56,8 @@ export default function Sidebar() {
       <nav className="flex-1 flex flex-col gap-1">
         {menuItems.map((item) => {
           const isActive = mounted 
-          ? (pathname === item.path || pathname.startsWith(`${item.path}/`)) 
-          : false;
+            ? (pathname === item.path || pathname.startsWith(`${item.path}/`)) 
+            : false;
 
           return (
             <button
@@ -75,7 +73,6 @@ export default function Sidebar() {
               <span className="flex-shrink-0">
                 {item.icon}
               </span>
-              
               <span className="text-[15px] font-medium tracking-wide">
                 {item.name}
               </span>
@@ -89,16 +86,25 @@ export default function Sidebar() {
           
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#d9d9d9] flex items-center justify-center overflow-hidden">
-               <div className="w-6 h-6 border-2 border-[#140a0e] rounded-full mt-4" />
+              <div className="w-6 h-6 border-2 border-[#140a0e] rounded-full mt-4" />
             </div>
 
             <div className="flex flex-col">
-              <span className="text-sm font-bold tracking-widest text-white leading-none italic ">
-                {user?.user_metadata.name}
-              </span>
-              <span className="text-[10px] font-bold uppercase text-[#5a424b] mt-1">
-                {user?.role_name}
-              </span>
+              {loading ? (
+                <div className="flex flex-col gap-1">
+                  <div className="h-3 w-24 bg-[#422128] rounded animate-pulse" />
+                  <div className="h-2 w-16 bg-[#26151c] rounded animate-pulse mt-1" />
+                </div>
+              ) : (
+                <>
+                  <span className="text-sm font-bold tracking-widest text-white leading-none italic">
+                    {user?.user_metadata.name}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase text-[#5a424b] mt-1">
+                    {user?.role_name}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
