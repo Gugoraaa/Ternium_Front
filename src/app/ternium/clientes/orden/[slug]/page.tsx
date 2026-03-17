@@ -13,6 +13,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AcceptOrderButton from '@/components/AcceptOrderButton';
+import StatusPill from '@/components/StatusPill';
 import { useUser } from '@/context/AuthContext';
 import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
 
@@ -311,7 +312,7 @@ export default function DetalleEdicionOrden() {
               Datos Fijos
             </span>
           </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-y-6 gap-x-12">
+          <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-y-6 gap-x-12">
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Cliente</p>
               <p className="font-bold text-slate-800">{order.client?.name || 'N/A'}</p>
@@ -323,6 +324,10 @@ export default function DetalleEdicionOrden() {
             <div>
               <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Fecha de Solicitud</p>
               <p className="font-bold text-slate-800">{order.created_at ? new Date(order.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Estado</p>
+              <StatusPill status={order.status || ''} />
             </div>
           </div>
         </section>

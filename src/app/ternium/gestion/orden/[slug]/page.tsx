@@ -8,6 +8,7 @@ import { FiSettings, FiPackage, FiTruck, FiActivity } from "react-icons/fi";
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AcceptOrderButton from '@/components/AcceptOrderButton';
+import StatusPill from '@/components/StatusPill';
 import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
 
 
@@ -84,16 +85,7 @@ export default function OrdenDetail() {
     }
   }
 
-  function getStatusColor(status: string) {
-    const statusColors: Record<string, string> = {
-      'Revision Operador': 'bg-orange-50 text-orange-600 border-orange-100',
-      'Aceptado': 'bg-green-50 text-green-600 border-green-100',
-      'Rechazado': 'bg-red-50 text-red-600 border-red-100',
-      'Revision Cliente': 'bg-blue-50 text-blue-600 border-blue-100'
-    };
-    return statusColors[status] || 'bg-gray-50 text-gray-600 border-gray-100';
-  }
-
+  
 
 
   function isFieldModified(originalValue: any, newValue?: any) {
@@ -195,10 +187,7 @@ export default function OrdenDetail() {
                 <FiTruck className="text-slate-300"/> {order.client?.name || 'N/A'}
               </p>
             </div>
-            <div className={`${getStatusColor(order.status || '')} text-[11px] font-bold px-4 py-1.5 rounded-full border flex items-center gap-2 shrink-0`}>
-              <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span> 
-              {order.status}
-            </div>
+            <StatusPill status={order.status || ''} />
           </div>
         </div>
 

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useOrders } from '@/hooks/orders/useOrders';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import StatusBadge from '@/components/StatusBadge';
+import StatusPill from '@/components/StatusPill';
 
 
 export default function DashboardOrdenes() {
@@ -121,8 +122,8 @@ export default function DashboardOrdenes() {
                         minute: '2-digit' 
                       }) : 'N/A'}
                     </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={order.status} />
+                    <td className="px-6 py-4 w-fit">
+                      <StatusPill status={order.status || ''} />
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button 

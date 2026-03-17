@@ -4,6 +4,7 @@ import { FiSearch, FiFilter, FiEye } from 'react-icons/fi';
 import { HiOutlineExclamationCircle } from 'react-icons/hi';
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import StatusPill from '@/components/StatusPill';
 import { useRouter } from 'next/navigation';
 
 interface Order {
@@ -100,26 +101,7 @@ const SeguimientoOrdenes = () => {
     }
   }
 
-  function getStatusColor(status: string) {
-    const statusColors: Record<string, string> = {
-      'pending': 'bg-orange-50 text-orange-600 border-orange-100',
-      'approved': 'bg-green-50 text-green-600 border-green-100',
-      'rejected': 'bg-red-50 text-red-600 border-red-100',
-      'client_review': 'bg-blue-50 text-blue-600 border-blue-100'
-    };
-    return statusColors[status] || 'bg-gray-50 text-gray-600 border-gray-100';
-  }
-
-  function getStatusText(status: string) {
-    const statusTexts: Record<string, string> = {
-      'pending': 'Pendiente validación',
-      'approved': 'Aceptado',
-      'rejected': 'Rechazado',
-      'client_review': 'En revisión cliente'
-    };
-    return statusTexts[status] || 'Desconocido';
-  }
-
+  
   const filteredOrders = orders.filter(order => 
     order.id.toString().includes(searchTerm.toLowerCase()) ||
     order.product?.pt?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -236,7 +218,7 @@ const SeguimientoOrdenes = () => {
                     </td>
                     <td className="px-6 py-5 text-sm text-slate-500">{order.client?.name || 'N/A'}</td>
                     <td className="px-6 py-5">
-                      <StatusLabel status={order.status} />
+                      <StatusPill status={order.status || ''} />
                     </td>
                     <td className="px-6 py-5 text-right">
                       <button 
@@ -285,36 +267,6 @@ const StatCard = ({ title, value, badge }: { title: string, value: string, badge
   </div>
 );
 
-const StatusLabel = ({ status }: { status: string }) => {
-  let colorClass = 'bg-gray-50 text-gray-600 border-gray-100';
-  let dotColor = 'bg-gray-500';
-  let text = 'Desconocido';
-  
-  if (status === 'Aceptado') {
-    colorClass = 'bg-green-50 text-green-600 border-green-100';
-    dotColor = 'bg-green-500';
-    text = 'Aceptado';
-  } else if (status === 'Rechazado') {
-    colorClass = 'bg-red-50 text-red-600 border-red-100';
-    dotColor = 'bg-red-500';
-    text = 'Rechazado';
-  } else if (status === 'Revision Cliente') {
-    colorClass = 'bg-blue-50 text-blue-600 border-blue-100';
-    dotColor = 'bg-blue-500';
-    text = 'Revision Cliente';
-  } else if (status === 'Revision Operador') {
-    colorClass = 'bg-orange-50 text-orange-600 border-orange-100';
-    dotColor = 'bg-orange-500';
-    text = 'Revision Operador';
-  }
-  
-  return (
-    <div className={`mx-auto w-fit flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold border ${colorClass}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-      {text}
-    </div>
-  );
-};
 
 const PagBtn = ({ label, active, disabled }: { label: string, active?: boolean, disabled?: boolean }) => (
   <button 
