@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 
@@ -35,7 +35,7 @@ export function useOrders(): UseOrdersReturn {
     searchId: ''
   });
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   async function fetchOrders() {
     try {
@@ -105,9 +105,21 @@ export function useOrders(): UseOrdersReturn {
     });
   }
 
+  const [sessionReady, setSessionReady] = useState<boolean | null>(null);
+
   useEffect(() => {
-    fetchOrders();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+        setSessionReady(!!session);
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (sessionReady === true) fetchOrders();
+    else if (sessionReady === false) setLoading(false);
+  }, [sessionReady]);
 
   return {
     orders,
