@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from "@/components/Sidebar";
 import { Toaster } from "react-hot-toast";
+import { SidebarProvider } from '@/context/SidebarContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export default async function RootLayout({
   }
 
   return (
-    <>
+    <SidebarProvider>
       <Toaster
         position="bottom-right"
         toastOptions={{
@@ -39,6 +40,6 @@ export default async function RootLayout({
           {children}
         </div>
       </section>
-    </>
+    </SidebarProvider>
   );
 } 

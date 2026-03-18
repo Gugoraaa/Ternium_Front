@@ -165,12 +165,6 @@ export default function EditarProgramacionPage() {
             </div>
           </div>
 
-          {/* Footer Info */}
-          <div className="border-t border-slate-100 mt-6 pt-4 mb-6">
-            <p className="text-xs text-slate-400">
-              Última modificación: {orderData.lastModified} Usuario: {orderData.modifiedBy}
-            </p>
-          </div>
 
           {/* Action Buttons */}
           <div className="flex gap-4 justify-end">
