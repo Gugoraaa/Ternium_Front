@@ -18,4 +18,11 @@ export type OrderDetails = Order & {
   specs?: OrderSpecs;
   product?: Product;
   client?: Client;
+  programing_instructions?: {
+    id: number;
+    responsible: string | null;
+    assigned_date: string | null;
+    note: string | null;
+    status: 'Aceptado' | 'Sin asignar' | 'Reasignado' | null;
+  };
 };

@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { useProgrammingData } from '@/hooks/programacion/useProgrammingData';
-import { FiSearch, FiDownload, FiPlus, FiEdit, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiDownload} from 'react-icons/fi';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ProgramacionPage() {

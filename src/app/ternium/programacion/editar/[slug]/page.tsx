@@ -4,12 +4,17 @@ import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft } from 'react-icons/fi';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { useOrderById } from '@/hooks/orders/useOrderById';
+import { useWorkers } from '@/hooks/useWorkers';
+import { createClient } from '@/lib/supabase/client';
 
 export default function EditarProgramacionPage() {
   const router = useRouter();
   const params = useParams();
-  const orderId = params.id as string;
+  const orderId = params.slug as string;
   
+  const { order, loading: orderLoading, error } = useOrderById(orderId);
+  const { workers, loading: workersLoading } = useWorkers();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     responsible: '',
@@ -17,27 +22,33 @@ export default function EditarProgramacionPage() {
     comment: ''
   });
 
-  // Mock data - replace with actual data fetching
-  const orderData = {
-    id: 'ORD-9281',
-    product: 'Rollo Caliente',
-    client: 'Automotriz MX',
-    status: 'Pendiente de confirmación',
-    currentAssignment: null,
-    lastModified: '22/05/2024',
-    modifiedBy: 'adm_prog01'
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
-      // TODO: Implement actual update logic
-      console.log('Updating assignment:', { orderId, ...formData });
+      const supabase = createClient();
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const selectedWorkerName = formData.responsible.trim();
+      const selectedWorker = workers.find(worker => 
+        `${worker.name} ${worker.second_name}` === selectedWorkerName
+      );
+      
+      if (!selectedWorker) {
+        throw new Error('No se encontró el trabajador seleccionado');
+      }
+
+      const { error: updateError } = await supabase
+        .from('programing_instructions')
+        .update({
+          responsible: selectedWorker.id,
+          assigned_date: formData.deadline,
+          note: formData.comment || 'No hay nota proporcionada',
+          status: 'Asignado'
+        })
+        .eq('id', order!.programing_instructions!.id);
+
+      if (updateError) throw updateError;
       
       router.push('/ternium/programacion');
     } catch (error) {
@@ -51,11 +62,30 @@ export default function EditarProgramacionPage() {
     router.push('/ternium/programacion');
   };
 
-  if (loading) {
+  if (orderLoading || workersLoading || loading) {
     return (
       <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10 font-sans text-slate-700">
         <div className="max-w-7xl mx-auto">
-          <LoadingSpinner size="large" message="Guardando asignación..." fullScreen />
+          <LoadingSpinner size="large" message={orderLoading || workersLoading ? "Cargando datos..." : "Guardando asignación..."} fullScreen />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10 font-sans text-slate-700">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-red-800 mb-2">Error</h2>
+            <p className="text-red-600">{error || 'No se encontró la orden especificada'}</p>
+            <button
+              onClick={() => router.push('/ternium/programacion')}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Volver a Programación
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -75,42 +105,37 @@ export default function EditarProgramacionPage() {
           </button>
           
           <h1 className="text-3xl font-extrabold text-[#1e293b] tracking-tight">
-            {orderData.currentAssignment ? 'Editar Asignación' : 'Nueva Asignación'}
+            {order?.programing_instructions?.responsible ? 'Editar Asignación' : 'Nueva Asignación'}
           </h1>
         </div>
 
         {/* Order Details Card */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">ID</p>
-              <p className="font-semibold text-slate-800">#{orderData.id}</p>
+              <p className="font-semibold text-slate-800">#{order?.id}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Producto</p>
-              <p className="font-semibold text-slate-800">{orderData.product}</p>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">PT</p>
+              <p className="font-semibold text-slate-800">{order?.product?.pt || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Master</p>
+              <p className="font-semibold text-slate-800">{order?.product?.master || 'N/A'}</p>
             </div>
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Cliente</p>
-              <p className="font-semibold text-slate-800">{orderData.client}</p>
+              <p className="font-semibold text-slate-800">{order?.client?.name || 'N/A'}</p>
             </div>
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Estado</p>
               <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                {orderData.status}
+                {order?.programing_instructions?.status || 'N/A'}
               </span>
             </div>
           </div>
           
-          <div className="border-t border-slate-100 pt-4">
-            <p className="text-sm text-slate-600">
-              {orderData.currentAssignment ? (
-                <span><span className="font-medium">Asignación actual:</span> {orderData.currentAssignment}</span>
-              ) : (
-                <span className="font-medium">Esta orden no tiene asignación actual</span>
-              )}
-            </p>
-          </div>
         </div>
 
         {/* Edit Form */}
@@ -128,11 +153,11 @@ export default function EditarProgramacionPage() {
                 required
               >
                 <option value="">Seleccionar persona responsable</option>
-                <option value="G. Sánchez">G. Sánchez</option>
-                <option value="M. Luna">M. Luna</option>
-                <option value="J. Rodriguez">J. Rodriguez</option>
-                <option value="A. Martinez">A. Martinez</option>
-                <option value="L. Garcia">L. Garcia</option>
+                {workers.map((worker) => (
+                  <option key={worker.id} value={`${worker.name} ${worker.second_name}`}>
+                    {worker.name} {worker.second_name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -180,7 +205,7 @@ export default function EditarProgramacionPage() {
               disabled={loading}
               className="px-6 py-3 bg-[#ff4301] hover:bg-[#e63d01] text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Guardando...' : (orderData.currentAssignment ? 'Actualizar Asignación' : 'Crear Asignación')}
+              {loading ? 'Guardando...' : (order?.programing_instructions?.responsible ? 'Actualizar Asignación' : 'Crear Asignación')}
             </button>
           </div>
         </form>
