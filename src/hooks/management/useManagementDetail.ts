@@ -68,7 +68,7 @@ export function useManagementDetail(orderId: string) {
       if (!order.shipping_info?.id) {
         const { data: siData, error: siError } = await supabase
           .from('shipping_info')
-          .insert({ status: 'Pendiente' })
+          .insert({ status: 'Pendiente', approved_at: new Date().toISOString() })
           .select()
           .single();
 
