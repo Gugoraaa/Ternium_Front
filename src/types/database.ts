@@ -63,34 +63,40 @@ export type Database = {
         Row: {
           approved_at: string | null
           id: number
-          status: string | null
+          status: Database["public"]["Enums"]["dispatch_enum_status"] | null
         }
         Insert: {
           approved_at?: string | null
           id?: number
-          status?: string | null
+          status?: Database["public"]["Enums"]["dispatch_enum_status"] | null
         }
         Update: {
           approved_at?: string | null
           id?: number
-          status?: string | null
+          status?: Database["public"]["Enums"]["dispatch_enum_status"] | null
         }
         Relationships: []
       }
-      execution_details_id: {
+      execution_details: {
         Row: {
           id: number
+          note: string | null
           shipping_packaging: string | null
+          status: Database["public"]["Enums"]["execution_details_enum"]
           weight: number | null
         }
         Insert: {
           id?: number
+          note?: string | null
           shipping_packaging?: string | null
+          status?: Database["public"]["Enums"]["execution_details_enum"]
           weight?: number | null
         }
         Update: {
           id?: number
+          note?: string | null
           shipping_packaging?: string | null
+          status?: Database["public"]["Enums"]["execution_details_enum"]
           weight?: number | null
         }
         Relationships: []
@@ -259,7 +265,7 @@ export type Database = {
             foreignKeyName: "orders_execution_details_id_fkey"
             columns: ["execution_details_id"]
             isOneToOne: false
-            referencedRelation: "execution_details_id"
+            referencedRelation: "execution_details"
             referencedColumns: ["id"]
           },
           {
@@ -389,7 +395,7 @@ export type Database = {
           plates: string | null
           scheduled_departure_date: string | null
           shipped_at: string | null
-          status: string | null
+          status: Database["public"]["Enums"]["shipping_info_status"] | null
           tar: string | null
         }
         Insert: {
@@ -398,7 +404,7 @@ export type Database = {
           plates?: string | null
           scheduled_departure_date?: string | null
           shipped_at?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["shipping_info_status"] | null
           tar?: string | null
         }
         Update: {
@@ -407,7 +413,7 @@ export type Database = {
           plates?: string | null
           scheduled_departure_date?: string | null
           shipped_at?: string | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["shipping_info_status"] | null
           tar?: string | null
         }
         Relationships: []
@@ -505,12 +511,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      dispatch_enum_status: "Aceptado" | "Pendiente" | "Rechazado"
+      execution_details_enum: "Aceptado" | "Rechazado" | "Pendiente"
       "order-status-enum":
         | "Aceptado"
         | "Rechazado"
         | "Revision Cliente"
         | "Revision Operador"
-      "programing-status-enum": "Aceptado" | "Sin asignar" | "Reasignado"
+      "programing-status-enum": "Asignado" | "Sin asignar" | "Reasignado"
+      shipping_info_status: "Aceptado" | "Pendiente" | "Rechazado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -638,13 +647,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      dispatch_enum_status: ["Aceptado", "Pendiente", "Rechazado"],
+      execution_details_enum: ["Aceptado", "Rechazado", "Pendiente"],
       "order-status-enum": [
         "Aceptado",
         "Rechazado",
         "Revision Cliente",
         "Revision Operador",
       ],
-      "programing-status-enum": ["Aceptado", "Sin asignar", "Reasignado"],
+      "programing-status-enum": ["Asignado", "Sin asignar", "Reasignado"],
+      shipping_info_status: ["Aceptado", "Pendiente", "Rechazado"],
     },
   },
 } as const
