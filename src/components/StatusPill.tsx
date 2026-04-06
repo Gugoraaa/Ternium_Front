@@ -6,19 +6,35 @@ interface StatusPillProps {
 }
 
 export default function StatusPill({ status, className = '' }: StatusPillProps) {
-  function getStatusColor(status: string) {
-    const statusColors: Record<string, string> = {
-      'Revision Operador': 'bg-orange-50 text-orange-600 border-orange-100',
-      'Aceptado': 'bg-green-50 text-green-600 border-green-100',
-      'Rechazado': 'bg-red-50 text-red-600 border-red-100',
-      'Revision Cliente': 'bg-blue-50 text-blue-600 border-blue-100'
-    };
-    return statusColors[status] || 'bg-gray-50 text-gray-600 border-gray-100';
-  }
+  const styles: Record<string, { pill: string; dot: string }> = {
+    'Revision Operador': {
+      pill: 'bg-orange-50 text-orange-600 border border-orange-200',
+      dot: 'bg-orange-500',
+    },
+    'Aceptado': {
+      pill: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+      dot: 'bg-emerald-500',
+    },
+    'Rechazado': {
+      pill: 'bg-red-50 text-red-600 border border-red-200',
+      dot: 'bg-red-500',
+    },
+    'Revision Cliente': {
+      pill: 'bg-blue-50 text-blue-600 border border-blue-200',
+      dot: 'bg-blue-500',
+    },
+  };
+
+  const cfg = styles[status] ?? {
+    pill: 'bg-slate-50 text-slate-600 border border-slate-200',
+    dot: 'bg-slate-400',
+  };
 
   return (
-    <div className={`${getStatusColor(status || '')} text-[11px] font-bold px-4 py-1.5 rounded-full border flex items-center gap-2 shrink-0 min-w-fit justify-center mx-auto ${className}`}>
-      <span className="w-2 h-2 bg-current rounded-full animate-pulse"></span> 
+    <div
+      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 min-w-fit ${cfg.pill} ${className}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${cfg.dot}`} />
       {status}
     </div>
   );

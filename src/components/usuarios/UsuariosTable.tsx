@@ -13,14 +13,14 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="bg-gray-50/50 border-b border-gray-100">
-            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-gray-400">Usuario</th>
-            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-gray-400">
+            <th scope="col" className="p-5 text-[10px] font-black uppercase tracking-widest text-gray-400">Usuario</th>
+            <th scope="col" className="p-5 text-[10px] font-black uppercase tracking-widest text-gray-400">
               Rol Asignado
             </th>
-            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-gray-400">
+            <th scope="col" className="p-5 text-[10px] font-black uppercase tracking-widest text-gray-400">
               Fecha de Registro
             </th>
-            <th className="p-5 text-[10px] font-black uppercase tracking-widest text-gray-400">
+            <th scope="col" className="p-5 text-[10px] font-black uppercase tracking-widest text-gray-400">
               Estado
             </th>
             <th className="p-5 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">
@@ -64,8 +64,8 @@ export default function UsuariosTable({ usuarios }: UsuariosTableProps) {
                 </span>
               </td>
               <td className="p-5 text-center">
-                <button className="text-gray-300 hover:text-gray-600 transition-colors">
-                  <FaEllipsisV />
+                <button aria-label={`Acciones para ${user.name} ${user.second_name}`} className="text-gray-300 hover:text-gray-600 transition-colors">
+                  <FaEllipsisV aria-hidden="true" />
                 </button>
               </td>
             </tr>

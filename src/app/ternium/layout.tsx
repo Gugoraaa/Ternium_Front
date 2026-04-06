@@ -23,6 +23,12 @@ export default async function RootLayout({
 
   return (
     <SidebarProvider>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:text-slate-800 focus:px-3 focus:py-2 focus:rounded-lg focus:shadow-md focus:text-sm focus:font-bold"
+      >
+        Ir al contenido principal
+      </a>
       <Toaster
         position="bottom-right"
         toastOptions={{
@@ -34,12 +40,12 @@ export default async function RootLayout({
             padding: "0.75rem 1rem",
           }
         }} />
-      <section className="flex h-screen">
+      <div className="flex h-screen">
         <Sidebar />
-        <div className="w-full h-full overflow-y-auto">
+        <main id="main-content" className="w-full h-full overflow-y-auto">
           {children}
-        </div>
-      </section>
+        </main>
+      </div>
     </SidebarProvider>
   );
 } 

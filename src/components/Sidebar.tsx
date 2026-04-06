@@ -74,10 +74,11 @@ export default function Sidebar() {
           )}
           <button
             onClick={toggleSidebar}
+            aria-label={isCollapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
+            aria-expanded={!isCollapsed}
             className="p-2 hover:bg-[rgba(255,255,255,0.05)] rounded-lg transition-colors text-[rgba(255,255,255,0.45)] hover:text-[rgba(255,255,255,0.75)] flex justify-center"
-            title={isCollapsed ? "Expandir sidebar" : "Contraer sidebar"}
           >
-            <RiMenu2Fill size={20} />
+            <RiMenu2Fill size={20} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -91,7 +92,7 @@ export default function Sidebar() {
               {/* Section Label */}
               {!isCollapsed && (
                 <div className="mb-2">
-                  <h3 className="text-[10px] font-medium tracking-[1.5px] text-[rgba(255,255,255,0.25)] uppercase">
+                  <h3 className="text-[10px] font-medium tracking-[1.5px] text-[rgba(255,255,255,0.45)] uppercase">
                     {section}
                   </h3>
                 </div>
@@ -108,14 +109,15 @@ export default function Sidebar() {
                     <button
                       key={item.name}
                       onClick={() => router.push(item.path)}
+                      aria-current={isActive ? 'page' : undefined}
+                      aria-label={isCollapsed ? item.name : undefined}
                       className={`
                         flex items-center gap-3 px-3 py-2 rounded-[10px] transition-all duration-200 relative group
-                        ${isActive 
-                          ? 'bg-gradient-to-r from-[rgba(224,82,82,0.18)] to-[rgba(224,82,82,0.06)] border-l-[3px] border-l-[#e05252] text-[#f28080] font-medium' 
+                        ${isActive
+                          ? 'bg-gradient-to-r from-[rgba(224,82,82,0.18)] to-[rgba(224,82,82,0.06)] border-l-[3px] border-l-[#e05252] text-[#f28080] font-medium'
                           : 'text-[rgba(255,255,255,0.45)] hover:bg-[rgba(255,255,255,0.05)] hover:text-[rgba(255,255,255,0.75)]'}
                         ${isCollapsed ? 'justify-center' : ''}
                       `}
-                      title={isCollapsed ? item.name : ''}
                     >
                       <span className="flex-shrink-0">
                         {item.icon}

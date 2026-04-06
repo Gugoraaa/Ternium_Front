@@ -12,7 +12,7 @@ export default function DespachoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-[#f8fafc] to-[#edf0f7] p-6 lg:p-10">
         <LoadingSpinner size="large" message="Cargando órdenes..." fullScreen />
       </div>
     );
@@ -20,9 +20,9 @@ export default function DespachoPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-[#f8fafc] to-[#edf0f7] p-6 lg:p-10">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
             Error: {error}
           </div>
         </div>
@@ -31,28 +31,30 @@ export default function DespachoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10 font-sans text-slate-700">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-[#f8fafc] to-[#edf0f7] p-6 lg:p-10 font-sans text-slate-700">
       <div className="max-w-7xl mx-auto">
 
-        {/* Header */}
         <header className="mb-8">
-          <h1 className="text-3xl font-extrabold text-[#1e293b] tracking-tight">
+          <div className="inline-flex items-center gap-1.5 bg-[#ff4301]/10 text-[#ff4301] text-[11px] font-bold px-3 py-1 rounded-full mb-3 border border-[#ff4301]/20">
+            <span className="w-1.5 h-1.5 bg-[#ff4301] rounded-full" />
+            LOGÍSTICA & DESPACHO
+          </div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Logística y Despacho
           </h1>
-          <p className="text-slate-500 mt-2 max-w-2xl">
+          <p className="text-slate-500 mt-1.5 max-w-2xl">
             Gestiona la salida y entrega de órdenes aprobadas para despacho.
           </p>
         </header>
 
-        {/* Filters */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-[0_2px_16px_rgba(15,23,42,0.06)] mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                 ESTADO DE ENVÍO
               </label>
               <select
-                className="bg-slate-50 border border-slate-200 text-slate-600 text-sm rounded-lg focus:ring-orange-500 block w-full p-2.5 outline-none appearance-none cursor-pointer"
+                className="bg-slate-50/80 border border-slate-200 text-slate-600 text-sm rounded-xl focus:ring-2 focus:ring-[#ff4301]/20 focus:border-[#ff4301]/40 block w-full p-2.5 outline-none appearance-none cursor-pointer transition-all"
                 value={filters.shippingStatus}
                 onChange={(e) =>
                   updateFilters({ shippingStatus: e.target.value as ShippingInfoStatus | 'Todos' })
@@ -67,7 +69,7 @@ export default function DespachoPage() {
             <div className="flex items-end">
               <button
                 onClick={() => updateFilters({ shippingStatus: 'Pendiente' })}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 px-4 rounded-lg transition-colors text-sm"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 px-4 rounded-xl transition-colors border border-slate-200 hover:border-slate-300 text-sm"
               >
                 Restablecer
               </button>
@@ -75,25 +77,29 @@ export default function DespachoPage() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_4px_24px_rgba(15,23,42,0.08),0_1px_4px_rgba(15,23,42,0.04)] overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-            <h2 className="font-bold text-slate-800">ÓRDENES DE DESPACHO</h2>
-            <span className="text-xs text-slate-400 font-medium">
-              {pagination.totalItems} órdenes
+            <div className="flex items-center gap-2.5">
+              <h2 className="font-bold text-slate-800 text-base">ÓRDENES DE DESPACHO</h2>
+              <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                {orders.length}
+              </span>
+            </div>
+            <span className="text-xs text-slate-400 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+              {pagination.totalItems} total
             </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-[#fcfdfe] border-b border-slate-100">
-                <tr className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                  <th className="px-6 py-4">ORDEN ID</th>
-                  <th className="px-6 py-4">PRODUCTO (PT)</th>
-                  <th className="px-6 py-4">CLIENTE</th>
-                  <th className="px-6 py-4">FECHA APROBACIÓN</th>
-                  <th className="px-6 py-4 text-center">ESTADO</th>
-                  <th className="px-6 py-4 text-right">ACCIÓN</th>
+              <thead className="bg-gradient-to-r from-slate-50 to-[#f8fafc] border-b border-slate-100">
+                <tr className="text-[11px] uppercase font-semibold text-slate-500 tracking-wider">
+                  <th scope="col" className="px-6 py-4">ORDEN ID</th>
+                  <th scope="col" className="px-6 py-4">PRODUCTO (PT)</th>
+                  <th scope="col" className="px-6 py-4">CLIENTE</th>
+                  <th scope="col" className="px-6 py-4">FECHA APROBACIÓN</th>
+                  <th scope="col" className="px-6 py-4 text-center">ESTADO</th>
+                  <th scope="col" className="px-6 py-4 text-right">ACCIÓN</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -108,7 +114,7 @@ export default function DespachoPage() {
                     const isPending = order.shipping_info?.status === 'Pendiente';
                     const approvedAt = order.dispatch_validation?.approved_at;
                     return (
-                      <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={order.id} className="hover:bg-[#fff6f2] transition-colors duration-150 group">
                         <td className="px-6 py-4 font-bold text-sm text-slate-700">
                           ORD-{order.id}
                         </td>
@@ -138,7 +144,7 @@ export default function DespachoPage() {
                               onClick={() =>
                                 router.push(`/ternium/despacho/gestionar/${order.id}`)
                               }
-                              className="text-[#ff4301] border border-[#ff4301] hover:bg-[#ff4301] hover:text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
+                              className="text-[#ff4301] bg-[#ff4301]/5 border border-[#ff4301]/30 hover:bg-[#ff4301] hover:text-white hover:shadow-[0_4px_12px_rgba(255,67,1,0.3)] px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
                             >
                               Gestionar Entrega
                             </button>
@@ -147,7 +153,7 @@ export default function DespachoPage() {
                               onClick={() =>
                                 router.push(`/ternium/despacho/orden/${order.id}`)
                               }
-                              className="text-slate-500 border border-slate-300 hover:bg-slate-100 px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
+                              className="text-slate-500 bg-slate-50 border border-slate-200 hover:bg-slate-100 hover:border-slate-300 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
                             >
                               Ver Detalle
                             </button>
@@ -161,9 +167,8 @@ export default function DespachoPage() {
             </table>
           </div>
 
-          {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="p-4 bg-[#fcfdfe] flex justify-between items-center border-t border-slate-100">
+            <div className="p-4 bg-gradient-to-r from-[#fafbfc] to-white flex justify-between items-center border-t border-slate-100">
               <span className="text-xs text-slate-400 font-medium">
                 Mostrando {(pagination.currentPage - 1) * pagination.itemsPerPage + 1}–
                 {Math.min(
@@ -187,8 +192,8 @@ export default function DespachoPage() {
                       onClick={() => updatePage(p)}
                       className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
                         pagination.currentPage === p
-                          ? 'bg-[#ff4301] text-white shadow-md'
-                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                          ? 'bg-gradient-to-br from-[#ff4301] to-[#e03200] text-white shadow-[0_2px_8px_rgba(255,67,1,0.4)]'
+                          : 'bg-white border border-slate-200 text-slate-600 hover:border-[#ff4301]/30 hover:text-[#ff4301]'
                       }`}
                     >
                       {p}
@@ -198,7 +203,7 @@ export default function DespachoPage() {
                 <button
                   onClick={() => updatePage(pagination.currentPage + 1)}
                   disabled={pagination.currentPage === pagination.totalPages}
-                  className="px-3 py-1 text-xs font-bold text-slate-800 hover:text-black border border-slate-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 text-xs font-bold text-slate-800 hover:text-black border border-slate-200 rounded-lg hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Siguiente
                 </button>
@@ -214,15 +219,15 @@ export default function DespachoPage() {
 
 function ShippingStatusBadge({ status }: { status: string | null }) {
   const map: Record<string, { label: string; classes: string }> = {
-    Pendiente: { label: 'Pendiente',  classes: 'bg-yellow-100 text-yellow-700' },
-    Aceptado:  { label: 'Entregado',  classes: 'bg-green-100 text-green-700' },
-    Rechazado: { label: 'Rechazado',  classes: 'bg-red-100 text-red-700' },
+    Pendiente: { label: 'Pendiente',  classes: 'bg-amber-50 text-amber-700 border border-amber-100' },
+    Aceptado:  { label: 'Entregado',  classes: 'bg-emerald-50 text-emerald-700 border border-emerald-100' },
+    Rechazado: { label: 'Rechazado',  classes: 'bg-red-50 text-red-600 border border-red-100' },
   };
 
   const cfg = status ? (map[status] ?? map['Pendiente']) : map['Pendiente'];
 
   return (
-    <span className={`inline-flex px-2.5 py-1 text-[11px] font-semibold rounded-full ${cfg.classes}`}>
+    <span className={`inline-flex px-3 py-1.5 text-[11px] font-semibold rounded-lg ${cfg.classes}`}>
       {cfg.label}
     </span>
   );

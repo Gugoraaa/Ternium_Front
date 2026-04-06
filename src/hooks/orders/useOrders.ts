@@ -121,10 +121,13 @@ export function useOrders(): UseOrdersReturn {
     else if (sessionReady === false) setLoading(false);
   }, [sessionReady]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const filteredOrders = useMemo(() => applyFilters(), [orders, filters]);
+
   return {
     orders,
     loading,
-    filteredOrders: applyFilters(),
+    filteredOrders,
     filters,
     setFilters,
     applyFilters,

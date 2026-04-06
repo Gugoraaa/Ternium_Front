@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,11 @@ export function useCreateUsuarioForm() {
   const router = useRouter();
   const supabase = createClient();
   const [formData, setFormData] = useState<CreateUserFormData>(INITIAL_FORM_DATA);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => clearTimeout(redirectTimerRef.current);
+  }, []);
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
@@ -79,7 +84,7 @@ export function useCreateUsuarioForm() {
       toast.success('Usuario creado exitosamente', { id: 'createUser' });
       setFormData(INITIAL_FORM_DATA);
 
-      setTimeout(() => {
+      redirectTimerRef.current = setTimeout(() => {
         router.push('/ternium/usuarios');
       }, 1500);
     } catch (error: any) {
