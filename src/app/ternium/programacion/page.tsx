@@ -168,7 +168,7 @@ export default function ProgramacionPage() {
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         order.programing_instruction?.status === 'Sin asignar' 
                           ? 'bg-slate-100 text-slate-700'
-                          : order.programing_instruction?.status === 'Aceptado'
+                          : order.programing_instruction?.status === 'Asignado'
                           ? 'bg-green-100 text-green-800'
                           : 'bg-yellow-100 text-yellow-800'
                       }`}>
