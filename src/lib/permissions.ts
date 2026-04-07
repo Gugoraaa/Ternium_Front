@@ -1,10 +1,10 @@
 export const ROLE_ALLOWED_PATHS: Record<string, string[]> = {
-  user_admin:        ['/ternium/dashboard', '/ternium/usuarios'],
-  client_manager:    ['/ternium/dashboard', '/ternium/clientes'],
-  order_manager:     ['/ternium/dashboard', '/ternium/gestion'],
-  operations_manager:['/ternium/dashboard', '/ternium/operaciones'],
-  scheduler:         ['/ternium/dashboard', '/ternium/programacion'],
-  order_controller:  ['/ternium/dashboard', '/ternium/management'],
+  user_admin:        ['/ternium/dashboard', '/ternium/usuarios',     '/ternium/leaderboard'],
+  client_manager:    ['/ternium/dashboard', '/ternium/clientes',     '/ternium/leaderboard'],
+  order_manager:     ['/ternium/dashboard', '/ternium/gestion',      '/ternium/leaderboard'],
+  operations_manager:['/ternium/dashboard', '/ternium/operaciones',  '/ternium/leaderboard'],
+  scheduler:         ['/ternium/dashboard', '/ternium/programacion', '/ternium/leaderboard'],
+  order_controller:  ['/ternium/dashboard', '/ternium/management',   '/ternium/leaderboard'],
 };
 
 /**

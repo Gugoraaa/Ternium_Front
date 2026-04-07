@@ -2,7 +2,7 @@
 
 import { MdOutlineDashboard, MdLogout } from "react-icons/md";
 import { FiUsers } from "react-icons/fi";
-import { FaTruck, FaBriefcase } from "react-icons/fa";
+import { FaTruck, FaBriefcase, FaTrophy } from "react-icons/fa";
 import { HiOutlineChartSquareBar, HiUser } from "react-icons/hi";
 import { GiCargoCrane } from "react-icons/gi";
 import { FaGear } from "react-icons/fa6";
@@ -27,6 +27,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   // GENERAL
   { name: 'Dashboard', icon: <MdOutlineDashboard size={18} />, path: '/ternium/dashboard', section: 'GENERAL' },
+  { name: 'Leaderboard', icon: <FaTrophy size={16} />, path: '/ternium/leaderboard', section: 'GENERAL' },
   { name: 'Usuarios', icon: <FiUsers size={18} />, path: '/ternium/usuarios', section: 'GENERAL' },
   { name: 'Clientes', icon: <FaBriefcase size={18} />, path: '/ternium/clientes', section: 'GENERAL' },
   

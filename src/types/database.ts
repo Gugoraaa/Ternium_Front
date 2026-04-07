@@ -62,44 +62,122 @@ export type Database = {
       dispatch_validation: {
         Row: {
           approved_at: string | null
+          approved_by: string | null
           id: number
           status: Database["public"]["Enums"]["dispatch_enum_status"] | null
+          updated_at: string | null
         }
         Insert: {
           approved_at?: string | null
+          approved_by?: string | null
           id?: number
           status?: Database["public"]["Enums"]["dispatch_enum_status"] | null
+          updated_at?: string | null
         }
         Update: {
           approved_at?: string | null
+          approved_by?: string | null
           id?: number
           status?: Database["public"]["Enums"]["dispatch_enum_status"] | null
+          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_validation_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       execution_details: {
         Row: {
           id: number
           note: string | null
+          recorded_by: string | null
           shipping_packaging: string | null
           status: Database["public"]["Enums"]["execution_details_enum"]
+          updated_at: string | null
           weight: number | null
         }
         Insert: {
           id?: number
           note?: string | null
+          recorded_by?: string | null
           shipping_packaging?: string | null
           status?: Database["public"]["Enums"]["execution_details_enum"]
+          updated_at?: string | null
           weight?: number | null
         }
         Update: {
           id?: number
           note?: string | null
+          recorded_by?: string | null
           shipping_packaging?: string | null
           status?: Database["public"]["Enums"]["execution_details_enum"]
+          updated_at?: string | null
           weight?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "execution_details_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leaderboard_snapshots: {
+        Row: {
+          actions_count: number
+          composite_score: number | null
+          created_at: string
+          id: number
+          metadata: Json | null
+          period_end: string
+          period_start: string
+          quality_score: number | null
+          rank_in_role: number | null
+          role_name: string
+          user_id: string
+        }
+        Insert: {
+          actions_count?: number
+          composite_score?: number | null
+          created_at?: string
+          id?: never
+          metadata?: Json | null
+          period_end: string
+          period_start: string
+          quality_score?: number | null
+          rank_in_role?: number | null
+          role_name: string
+          user_id: string
+        }
+        Update: {
+          actions_count?: number
+          composite_score?: number | null
+          created_at?: string
+          id?: never
+          metadata?: Json | null
+          period_end?: string
+          period_start?: string
+          quality_score?: number | null
+          rank_in_role?: number | null
+          role_name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_snapshots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_offers: {
         Row: {
@@ -348,6 +426,7 @@ export type Database = {
           note: string | null
           responsible: string | null
           status: Database["public"]["Enums"]["programing-status-enum"] | null
+          updated_at: string | null
         }
         Insert: {
           assigned_date?: string | null
@@ -355,6 +434,7 @@ export type Database = {
           note?: string | null
           responsible?: string | null
           status?: Database["public"]["Enums"]["programing-status-enum"] | null
+          updated_at?: string | null
         }
         Update: {
           assigned_date?: string | null
@@ -362,6 +442,7 @@ export type Database = {
           note?: string | null
           responsible?: string | null
           status?: Database["public"]["Enums"]["programing-status-enum"] | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -461,6 +542,44 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "product"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_activity_log: {
+        Row: {
+          action_type: string
+          created_at: string
+          entity_id: number
+          entity_type: string
+          id: number
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          entity_id: number
+          entity_type: string
+          id?: never
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          entity_id?: number
+          entity_type?: string
+          id?: never
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_activity_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
