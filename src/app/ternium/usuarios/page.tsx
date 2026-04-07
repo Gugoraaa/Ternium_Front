@@ -13,7 +13,7 @@ import UsuariosTable from '@/components/usuarios/UsuariosTable';
 // Definición de la página de usuarios
 export default function UsuariosPage() {
   useRoleGuard('/ternium/usuarios');
-  const { usuarios, loading } = useUsuarioData();
+  const { usuarios, loading, toggleActive, changeRole, deleteUser } = useUsuarioData();
   const router = useRouter();
 
   if (loading) {
@@ -25,7 +25,12 @@ export default function UsuariosPage() {
     <div className="p-8 bg-slate-50 min-h-screen font-sans text-slate-700">
       <UsuariosHeader onCreateUser={() => router.push('/ternium/usuarios/crearusuario')} />
       <UsuariosFilters />
-      <UsuariosTable usuarios={usuarios} />
+      <UsuariosTable
+        usuarios={usuarios}
+        toggleActive={toggleActive}
+        changeRole={changeRole}
+        deleteUser={deleteUser}
+      />
     </div>
   );
 }

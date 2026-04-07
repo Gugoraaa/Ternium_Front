@@ -7,6 +7,15 @@ import LeaderboardTable from '@/components/leaderboard/LeaderboardTable';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { FaTrophy } from 'react-icons/fa';
 
+function getPeriodDateRange(period: Period): string {
+  const now = new Date();
+  const fmt = (d: Date) => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+  if (period === 'all') return 'Todo el historial';
+  const days = period === 'week' ? 7 : 30;
+  const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  return `${fmt(start)} — ${fmt(now)}`;
+}
+
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'week', label: 'Últimos 7 días' },
   { value: 'month', label: 'Últimos 30 días' },
@@ -42,7 +51,7 @@ export default function LeaderboardPage() {
         </header>
 
         {/* Period filter */}
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
           {PERIODS.map((p) => (
             <button
               key={p.value}
@@ -57,6 +66,9 @@ export default function LeaderboardPage() {
             </button>
           ))}
         </div>
+        <p className="text-[11px] text-slate-400 font-medium mb-6">
+          Mostrando: {getPeriodDateRange(period)}
+        </p>
 
         {loading ? (
           <LoadingSpinner size="large" message="Calculando rankings..." fullScreen />
@@ -152,7 +164,7 @@ export default function LeaderboardPage() {
               <LeaderboardTable
                 entries={activeEntries}
                 mode={tab}
-                emptyMessage={`No hay datos de ${tab === 'trabajadores' ? 'asignaciones' : 'órdenes revisadas'} para este periodo.`}
+                emptyMessage={`Sin actividad de ${tab === 'trabajadores' ? 'asignaciones' : 'órdenes revisadas'} entre ${getPeriodDateRange(period)}. El ranking aparecerá automáticamente cuando haya registros en ese rango.`}
               />
             </div>
           </>
