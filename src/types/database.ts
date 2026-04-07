@@ -230,6 +230,7 @@ export type Database = {
       }
       order_offers_specs: {
         Row: {
+          coil_orientation: string | null
           id: number
           inner_diameter: string | null
           maximum_pallet_width: number | null
@@ -242,6 +243,7 @@ export type Database = {
           width: number | null
         }
         Insert: {
+          coil_orientation?: string | null
           id?: number
           inner_diameter?: string | null
           maximum_pallet_width?: number | null
@@ -254,6 +256,7 @@ export type Database = {
           width?: number | null
         }
         Update: {
+          coil_orientation?: string | null
           id?: number
           inner_diameter?: string | null
           maximum_pallet_width?: number | null
@@ -501,6 +504,7 @@ export type Database = {
       }
       specs: {
         Row: {
+          coil_orientation: string | null
           id: number
           inner_diameter: number | null
           maximum_pallet_width: number | null
@@ -513,6 +517,7 @@ export type Database = {
           width: number | null
         }
         Insert: {
+          coil_orientation?: string | null
           id?: number
           inner_diameter?: number | null
           maximum_pallet_width?: number | null
@@ -525,6 +530,7 @@ export type Database = {
           width?: number | null
         }
         Update: {
+          coil_orientation?: string | null
           id?: number
           inner_diameter?: number | null
           maximum_pallet_width?: number | null

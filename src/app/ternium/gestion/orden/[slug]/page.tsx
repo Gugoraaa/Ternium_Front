@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { HiOutlineDownload, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineQuestionMarkCircle } from "react-icons/hi";
 import { FiSettings, FiPackage, FiTruck, FiActivity } from "react-icons/fi";
@@ -10,6 +11,12 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import AcceptOrderButton from '@/components/AcceptOrderButton';
 import StatusPill from '@/components/StatusPill';
 import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
+import type { CoilOrientation } from '@/lib/tarima/types';
+
+const TarimaComparisonPanel = dynamic(
+  () => import('@/components/tarima/TarimaComparisonPanel'),
+  { ssr: false, loading: () => <div className="h-64 bg-slate-50 rounded-xl animate-pulse" /> }
+);
 
 
 export default function OrdenDetail() {
@@ -463,6 +470,16 @@ export default function OrdenDetail() {
             )}
           </div>
         </div>
+
+        {/* COMPARACIÓN 3D DE TARIMAS */}
+        {order.contra_offer && (
+          <TarimaComparisonPanel
+            originalSpec={order.specs ?? null}
+            originalOrientation={(order.specs?.coil_orientation as CoilOrientation | undefined) ?? 'vertical'}
+            offerSpec={orderOffer?.specs ?? null}
+            offerOrientation={(orderOffer?.specs?.coil_orientation as CoilOrientation | undefined) ?? 'vertical'}
+          />
+        )}
 
         {/* ACCIONES */}
         {canEdit && (

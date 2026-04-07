@@ -1,15 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  FiSearch, FiGrid, FiUser, FiZap, FiSave, 
-   FiCheckCircle 
+import dynamic from 'next/dynamic';
+import {
+  FiSearch, FiGrid, FiUser, FiZap, FiSave,
+   FiCheckCircle
 } from 'react-icons/fi';
 import { HiOutlineDocumentText } from 'react-icons/hi';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import { useUser } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import TarimaLoadingFallback from '@/components/tarima/TarimaLoadingFallback';
+import type { CoilOrientation } from '@/lib/tarima/types';
+
+const TarimaPanel = dynamic(() => import('@/components/tarima/TarimaPanel'), {
+  ssr: false,
+  loading: () => <TarimaLoadingFallback />,
+});
 
 const CapturaOrden = () => {
   const { user } = useUser();
@@ -17,6 +25,7 @@ const CapturaOrden = () => {
   
 
   const [isChecked, setIsChecked] = useState(false);
+  const [coilOrientation, setCoilOrientation] = useState<CoilOrientation>('vertical');
   const [formData, setFormData] = useState({
     producto: '',
     masterId: '',
@@ -347,6 +356,36 @@ const CapturaOrden = () => {
                 <DisplayField label="ANCHO TARIMA" value={specData?.maximum_pallet_width} unit="mm" />
                 <DisplayField label="EMBALAJE" value={specData?.shipping_packaging} />
               </div>
+
+              {/* Orientación del rollo — selector para previsualizar la tarima */}
+              <div className="mt-2">
+                <label className="text-xs font-bold text-slate-500 block mb-1.5 uppercase tracking-widest">Orientación del Rollo</label>
+                <div className="flex gap-3">
+                  {(['vertical', 'horizontal'] as CoilOrientation[]).map((o) => (
+                    <button
+                      key={o}
+                      type="button"
+                      onClick={() => setCoilOrientation(o)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
+                        coilOrientation === o
+                          ? 'bg-[#ff4301] text-white border-[#ff4301] shadow-md shadow-orange-100'
+                          : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-[#ff4301]'
+                      }`}
+                    >
+                      {o === 'vertical' ? 'Ojo Vertical' : 'Ojo Horizontal'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Visualización de tarima */}
+              {specData && (
+                <TarimaPanel
+                  spec={specData}
+                  orientation={coilOrientation}
+                  label="Previsualización de Tarima"
+                />
+              )}
 
               
 

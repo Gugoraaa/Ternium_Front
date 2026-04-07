@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { 
-  HiOutlineClipboardList, 
-  HiOutlineSparkles, 
+import {
+  HiOutlineClipboardList,
+  HiOutlineSparkles,
   HiOutlineExclamationCircle,
   HiOutlineMailOpen,
   HiOutlineTrendingUp,
@@ -14,8 +15,15 @@ import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AcceptOrderButton from '@/components/AcceptOrderButton';
 import StatusPill from '@/components/StatusPill';
+import TarimaLoadingFallback from '@/components/tarima/TarimaLoadingFallback';
 import { useUser } from '@/context/AuthContext';
 import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
+import type { CoilOrientation } from '@/lib/tarima/types';
+
+const TarimaPanel = dynamic(() => import('@/components/tarima/TarimaPanel'), {
+  ssr: false,
+  loading: () => <TarimaLoadingFallback />,
+});
 
 
 
@@ -32,6 +40,7 @@ export default function DetalleEdicionOrden() {
     const [loading, setLoading] = useState(true);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [clientNote, setClientNote] = useState<string>("");
+    const [coilOrientation, setCoilOrientation] = useState<CoilOrientation>('vertical');
 
     useEffect(() => {
         fetchOrderDetails();
@@ -39,7 +48,10 @@ export default function DetalleEdicionOrden() {
 
     useEffect(() => {
         if (!order) return;
-        
+
+        const sourceOrientation = (orderOffer?.specs?.coil_orientation ?? order.specs?.coil_orientation ?? 'vertical') as CoilOrientation;
+        setCoilOrientation(sourceOrientation);
+
         if (orderOffer?.specs) {
             setEditedSpecs(orderOffer.specs);
         } else {
@@ -54,6 +66,7 @@ export default function DetalleEdicionOrden() {
                 pieces_per_package: order.specs?.pieces_per_package,
                 maximum_pallet_width: order.specs?.maximum_pallet_width,
                 shipping_packaging: order.specs?.shipping_packaging,
+                coil_orientation: sourceOrientation,
             });
         }
     }, [order, orderOffer]);
@@ -185,6 +198,7 @@ export default function DetalleEdicionOrden() {
                     pieces_per_package: editedSpecs.pieces_per_package ?? order.specs.pieces_per_package,
                     maximum_pallet_width: editedSpecs.maximum_pallet_width ?? order.specs.maximum_pallet_width,
                     shipping_packaging: editedSpecs.shipping_packaging ?? order.specs.shipping_packaging,
+                    coil_orientation: coilOrientation,
                     product_id: order.product_id
                 };
 
@@ -542,6 +556,32 @@ export default function DetalleEdicionOrden() {
               )}
             </div>
 
+            {/* Orientación del Rollo */}
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Orientación del Rollo en Tarima</label>
+              <div className="flex gap-3">
+                {(['vertical', 'horizontal'] as CoilOrientation[]).map((o) => (
+                  <button
+                    key={o}
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => {
+                      if (!canEdit) return;
+                      setCoilOrientation(o);
+                      setEditedSpecs((prev) => ({ ...(prev ?? {}), coil_orientation: o }));
+                    }}
+                    className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all ${
+                      coilOrientation === o
+                        ? 'bg-[#ff4301] text-white border-[#ff4301]'
+                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:border-[#ff4301]'
+                    } ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {o === 'vertical' ? 'Ojo Vertical' : 'Ojo Horizontal'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Nota del Cliente */}
             <div className="space-y-2 md:col-span-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nota del Cliente</label>
@@ -562,6 +602,15 @@ export default function DetalleEdicionOrden() {
 
           </div>
         </section>
+
+        {/* VISUALIZACIÓN 3D DE TARIMA */}
+        {editedSpecs && (
+          <TarimaPanel
+            spec={editedSpecs}
+            orientation={coilOrientation}
+            label="Simulación de Tarima"
+          />
+        )}
 
         {/* CARD 3: CAMBIOS DETECTADOS */}
         <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
