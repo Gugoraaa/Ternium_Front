@@ -46,10 +46,10 @@ export function useDespachoDetail(orderId: string) {
     fetchOrder();
   }, [orderId]);
 
-  const marcarEntregada = async () => {
+  const generarOrden = async () => {
     if (!order?.shipping_info?.id) return false;
     if (order.shipping_info.status !== 'Pendiente') {
-      toast.error('Esta orden ya fue procesada');
+      toast.error('Esta orden ya fue despachada');
       return false;
     }
     try {
@@ -58,7 +58,36 @@ export function useDespachoDetail(orderId: string) {
 
       const { error } = await supabase
         .from('shipping_info')
-        .update({ status: 'Aceptado', shipped_at: new Date().toISOString() })
+        .update({ status: 'En ruta' })
+        .eq('id', order.shipping_info.id);
+
+      if (error) throw error;
+
+      toast.success('Orden de despacho generada');
+      await fetchOrder();
+      return true;
+    } catch (err) {
+      toast.error('Error al generar la orden de despacho');
+      console.error(err);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const marcarEntregada = async () => {
+    if (!order?.shipping_info?.id) return false;
+    if (order.shipping_info.status !== 'En ruta') {
+      toast.error('Esta orden no está en ruta');
+      return false;
+    }
+    try {
+      setSaving(true);
+      const supabase = createClient();
+
+      const { error } = await supabase
+        .from('shipping_info')
+        .update({ status: 'Entregado', shipped_at: new Date().toISOString() })
         .eq('id', order.shipping_info.id);
 
       if (error) throw error;
@@ -80,6 +109,7 @@ export function useDespachoDetail(orderId: string) {
     loading,
     saving,
     error,
+    generarOrden,
     marcarEntregada,
     refetch: fetchOrder,
   };

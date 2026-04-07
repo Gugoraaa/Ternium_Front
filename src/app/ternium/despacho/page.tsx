@@ -59,18 +59,20 @@ export default function DespachoPage() {
                 className="bg-slate-50/80 border border-slate-200 text-slate-600 text-sm rounded-xl focus:ring-2 focus:ring-[#ff4301]/20 focus:border-[#ff4301]/40 block w-full p-2.5 outline-none appearance-none cursor-pointer transition-all"
                 value={filters.shippingStatus}
                 onChange={(e) =>
-                  updateFilters({ shippingStatus: e.target.value as ShippingInfoStatus | 'Todos' })
+                  updateFilters({ shippingStatus: e.target.value as ShippingInfoStatus | 'Todos' | 'Activos' })
                 }
               >
+                <option value="Activos">Activos (Pendiente + En ruta)</option>
                 <option value="Pendiente">Pendiente</option>
-                <option value="Aceptado">Aceptado</option>
+                <option value="En ruta">En ruta</option>
+                <option value="Entregado">Entregado</option>
                 <option value="Rechazado">Rechazado</option>
                 <option value="Todos">Todos</option>
               </select>
             </div>
             <div className="flex items-end">
               <button
-                onClick={() => updateFilters({ shippingStatus: 'Pendiente' })}
+                onClick={() => updateFilters({ shippingStatus: 'Activos' })}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 px-4 rounded-xl transition-colors border border-slate-200 hover:border-slate-300 text-sm"
               >
                 Restablecer
@@ -113,7 +115,10 @@ export default function DespachoPage() {
                   </tr>
                 ) : (
                   orders.map((order) => {
-                    const isPending = order.shipping_info?.status === 'Pendiente';
+                    const status = order.shipping_info?.status;
+                    const isPending  = status === 'Pendiente';
+                    const isEnRoute  = status === 'En ruta';
+                    const isDelivered = status === 'Entregado';
                     const approvedAt = order.dispatch_validation?.approved_at;
                     return (
                       <tr key={order.id} className="hover:bg-[#fff6f2] transition-colors duration-150 group">
@@ -137,7 +142,7 @@ export default function DespachoPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex justify-center">
-                            <ShippingStatusBadge status={order.shipping_info?.status ?? null} />
+                            <ShippingStatusBadge status={status ?? null} />
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -150,7 +155,16 @@ export default function DespachoPage() {
                             >
                               Gestionar Entrega
                             </button>
-                          ) : (
+                          ) : isEnRoute ? (
+                            <button
+                              onClick={() =>
+                                router.push(`/ternium/despacho/orden/${order.id}`)
+                              }
+                              className="text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-600 hover:text-white hover:shadow-[0_4px_12px_rgba(37,99,235,0.3)] px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+                            >
+                              Ver Ruta
+                            </button>
+                          ) : isDelivered ? (
                             <button
                               onClick={() =>
                                 router.push(`/ternium/despacho/orden/${order.id}`)
@@ -159,7 +173,7 @@ export default function DespachoPage() {
                             >
                               Ver Detalle
                             </button>
-                          )}
+                          ) : null}
                         </td>
                       </tr>
                     );
@@ -221,9 +235,10 @@ export default function DespachoPage() {
 
 function ShippingStatusBadge({ status }: { status: string | null }) {
   const map: Record<string, { label: string; classes: string }> = {
-    Pendiente: { label: 'Pendiente',  classes: 'bg-amber-50 text-amber-700 border border-amber-100' },
-    Aceptado:  { label: 'Entregado',  classes: 'bg-emerald-50 text-emerald-700 border border-emerald-100' },
-    Rechazado: { label: 'Rechazado',  classes: 'bg-red-50 text-red-600 border border-red-100' },
+    Pendiente:  { label: 'Pendiente',  classes: 'bg-amber-50 text-amber-700 border border-amber-100' },
+    'En ruta':  { label: 'En ruta',    classes: 'bg-blue-50 text-blue-700 border border-blue-100' },
+    Entregado:  { label: 'Entregado',  classes: 'bg-emerald-50 text-emerald-700 border border-emerald-100' },
+    Rechazado:  { label: 'Rechazado',  classes: 'bg-red-50 text-red-600 border border-red-100' },
   };
 
   const cfg = status ? (map[status] ?? map['Pendiente']) : map['Pendiente'];

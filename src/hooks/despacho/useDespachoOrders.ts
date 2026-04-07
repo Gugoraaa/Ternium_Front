@@ -9,7 +9,7 @@ export function useDespachoOrders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<DespachoFilters>({
-    shippingStatus: 'Pendiente',
+    shippingStatus: 'Activos',
   });
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
@@ -26,7 +26,9 @@ export function useDespachoOrders() {
       // Step 1: get shipping_info IDs matching the status filter
       let siQuery = supabase.from('shipping_info').select('id');
 
-      if (filters.shippingStatus !== 'Todos') {
+      if (filters.shippingStatus === 'Activos') {
+        siQuery = siQuery.in('status', ['Pendiente', 'En ruta']);
+      } else if (filters.shippingStatus !== 'Todos') {
         siQuery = siQuery.eq('status', filters.shippingStatus);
       }
 

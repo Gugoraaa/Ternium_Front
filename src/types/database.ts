@@ -638,7 +638,7 @@ export type Database = {
         | "Revision Cliente"
         | "Revision Operador"
       "programing-status-enum": "Asignado" | "Sin asignar" | "Reasignado"
-      shipping_info_status: "Aceptado" | "Pendiente" | "Rechazado"
+      shipping_info_status: "En ruta" | "Pendiente" | "Rechazado" | "Entregado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -775,7 +775,7 @@ export const Constants = {
         "Revision Operador",
       ],
       "programing-status-enum": ["Asignado", "Sin asignar", "Reasignado"],
-      shipping_info_status: ["Aceptado", "Pendiente", "Rechazado"],
+      shipping_info_status: ["En ruta", "Pendiente", "Rechazado", "Entregado"],
     },
   },
 } as const

@@ -45,7 +45,7 @@ export interface OrderWithDespacho {
 }
 
 export interface DespachoFilters {
-  shippingStatus: ShippingInfoStatus | 'Todos';
+  shippingStatus: ShippingInfoStatus | 'Todos' | 'Activos';
 }
 
 export interface PaginationInfo {

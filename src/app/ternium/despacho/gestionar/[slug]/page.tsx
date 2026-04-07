@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft, FiInfo } from 'react-icons/fi';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -10,7 +11,13 @@ export default function GestionarDespachoPage() {
   const params = useParams();
   const orderId = params.slug as string;
 
-  const { order, loading, error } = useDespachoDetail(orderId);
+  const { order, loading, saving, error, generarOrden } = useDespachoDetail(orderId);
+
+  useEffect(() => {
+    if (!loading && order && order.shipping_info?.status && order.shipping_info.status !== 'Pendiente') {
+      router.replace('/ternium/despacho');
+    }
+  }, [loading, order, router]);
 
   if (loading) {
     return (
@@ -38,7 +45,7 @@ export default function GestionarDespachoPage() {
     );
   }
 
-  if (!order.shipping_info?.id) {
+  if (!order.shipping_info?.id || (order.shipping_info.status && order.shipping_info.status !== 'Pendiente')) {
     return (
       <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10">
         <div className="max-w-5xl mx-auto">
@@ -177,10 +184,14 @@ export default function GestionarDespachoPage() {
         {/* CTA */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex justify-end">
           <button
-            onClick={() => router.push(`/ternium/despacho/orden/${order.id}`)}
-            className="px-8 py-3 bg-[#ff4301] hover:bg-[#e63d01] text-white font-bold rounded-xl transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 text-sm uppercase tracking-wider"
+            onClick={async () => {
+              const ok = await generarOrden();
+              if (ok) router.push(`/ternium/despacho/orden/${order.id}`);
+            }}
+            disabled={saving}
+            className="px-8 py-3 bg-[#ff4301] hover:bg-[#e63d01] text-white font-bold rounded-xl transition-all shadow-lg hover:-translate-y-0.5 active:scale-95 text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
-            Generar Orden de Despacho
+            {saving ? 'Generando...' : 'Generar Orden de Despacho'}
           </button>
         </div>
 

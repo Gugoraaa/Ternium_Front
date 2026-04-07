@@ -16,6 +16,7 @@ export default function OrdenDespachoPage() {
 
   const { order, loading, saving, error, marcarEntregada } = useDespachoDetail(orderId);
 
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10">
@@ -43,8 +44,9 @@ export default function OrdenDespachoPage() {
   }
 
   const si = order.shipping_info;
-  const isDelivered = si?.status === 'Aceptado';
-  const isPending = si?.status === 'Pendiente';
+  const isEnRoute   = si?.status === 'En ruta';
+  const isDelivered = si?.status === 'Entregado';
+  const isPending   = si?.status === 'Pendiente';
 
   // Mock data (client-side only)
   const displayTar    = si?.tar    ?? `Tar-${String(order.id).padStart(4, '0')}`;
@@ -144,7 +146,7 @@ export default function OrdenDespachoPage() {
               <InfoCard label="Fecha Salida Programada" value={scheduledDate} />
               <InfoCard
                 label="Fecha Entrega"
-                value={shippedAt || (isPending ? 'Pendiente de entrega' : '—')}
+                value={shippedAt || (isEnRoute ? 'En tránsito' : isPending ? 'Pendiente de entrega' : '—')}
               />
               <InfoCard label="Estado de Envío" value={si?.status || '—'} />
             </div>
@@ -157,7 +159,7 @@ export default function OrdenDespachoPage() {
             Estado de Entrega
           </h2>
 
-          {isPending ? (
+          {isEnRoute ? (
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <p className="text-slate-500 text-sm">
                 Confirma la entrega una vez que el transporte haya llegado al destino.
@@ -181,6 +183,10 @@ export default function OrdenDespachoPage() {
                 )}
               </span>
             </div>
+          ) : isPending ? (
+            <div className="flex items-center gap-3">
+              <span className="text-slate-500 text-sm">Esta orden aún no ha sido despachada.</span>
+            </div>
           ) : (
             <div className="flex items-center gap-3">
               <span className="text-slate-500 text-sm">Esta orden no está disponible para entrega.</span>
@@ -195,9 +201,10 @@ export default function OrdenDespachoPage() {
 
 function ShippingStatusBadge({ status }: { status: string | null }) {
   const map: Record<string, { label: string; classes: string }> = {
-    Pendiente: { label: 'En Tránsito', classes: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-    Aceptado:  { label: 'Entregado',   classes: 'bg-green-100 text-green-700 border-green-200' },
-    Rechazado: { label: 'Rechazado',   classes: 'bg-red-100 text-red-700 border-red-200' },
+    Pendiente:  { label: 'Pendiente',   classes: 'bg-amber-100 text-amber-700 border-amber-200' },
+    'En ruta':  { label: 'En ruta',     classes: 'bg-blue-100 text-blue-700 border-blue-200' },
+    Entregado:  { label: 'Entregado',   classes: 'bg-green-100 text-green-700 border-green-200' },
+    Rechazado:  { label: 'Rechazado',   classes: 'bg-red-100 text-red-700 border-red-200' },
   };
 
   const cfg = status ? (map[status] ?? map['Pendiente']) : map['Pendiente'];
