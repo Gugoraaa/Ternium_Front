@@ -1,11 +1,13 @@
 'use client'
 import { useState, useEffect } from 'react';
-import { FiSearch, FiFilter, FiEye } from 'react-icons/fi'; 
+import { FiSearch, FiFilter, FiEye } from 'react-icons/fi';
 import { HiOutlineExclamationCircle } from 'react-icons/hi';
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import StatusPill from '@/components/StatusPill';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/context/AuthContext';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 interface Order {
   id: number;
@@ -38,6 +40,8 @@ interface ClientWorker {
 }
 
 const SeguimientoOrdenes = () => {
+  useRoleGuard('/ternium/clientes');
+  const { user: authUser } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,15 +50,32 @@ const SeguimientoOrdenes = () => {
   const supabase = createClient();
 
   useEffect(() => {
+    if (authUser === null) return;
     fetchClientOrders();
-  }, []);
+  }, [authUser]);
 
   async function fetchClientOrders() {
     try {
       setLoading(true);
       setError(null);
 
-      // Get current user
+      if (authUser?.role_name === 'admin') {
+        // Admin: fetch all orders across all clients
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            product:product_id (*),
+            client:client_id (*)
+          `)
+          .order('created_at', { ascending: false });
+
+        if (ordersError) throw ordersError;
+        setOrders(ordersData || []);
+        return;
+      }
+
+      // client_manager path: look up the user's assigned client
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) {
@@ -62,24 +83,14 @@ const SeguimientoOrdenes = () => {
         return;
       }
 
-      // Get client_worker info to find client_id
       const { data: clientWorker, error: workerError } = await supabase
         .from('client_workers')
         .select('*')
         .eq('user_id', user.id)
         .single();
-      
-      if (workerError) {
-        console.error('Error fetching client worker:', workerError);
-        if (workerError.code === 'PGRST116') {
-          setError('No se encontró asignación de cliente para este usuario');
-        } else {
-          throw workerError;
-        }
-        return;
-      }
 
-      // Get orders for this client
+      if (workerError) throw workerError;
+
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
         .select(`

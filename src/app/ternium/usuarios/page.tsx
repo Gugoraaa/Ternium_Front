@@ -2,6 +2,7 @@
 
 // Importando librerías necesarias
 import { useRouter } from 'next/navigation';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useUsuarioData } from '@/hooks/usuarios/useUsuarioData'; // Importamos el hook useUsuarioData que ya habíamos creado
 import UsuariosHeader from '@/components/usuarios/UsuariosHeader';
@@ -11,6 +12,7 @@ import UsuariosTable from '@/components/usuarios/UsuariosTable';
 
 // Definición de la página de usuarios
 export default function UsuariosPage() {
+  useRoleGuard('/ternium/usuarios');
   const { usuarios, loading } = useUsuarioData();
   const router = useRouter();
 

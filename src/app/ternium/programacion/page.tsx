@@ -3,8 +3,10 @@
 import { useProgrammingData } from '@/hooks/programacion/useProgrammingData';
 import { FiDownload } from 'react-icons/fi';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 export default function ProgramacionPage() {
+  useRoleGuard('/ternium/programacion');
   const {
     orders,
     loading,

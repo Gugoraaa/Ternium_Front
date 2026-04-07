@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   FiSearch, FiGrid, FiUser, FiZap, FiSave, 
    FiCheckCircle 
@@ -33,6 +33,20 @@ const CapturaOrden = () => {
   const [showMasterDropdown, setShowMasterDropdown] = useState(false);
   const [productData, setProductData] = useState<any>(null);
   const supabase = createClient();
+
+  // Pre-fill Yamaha as default client for admin users
+  useEffect(() => {
+    if (user?.role_name !== 'admin') return;
+    supabase
+      .from('clients')
+      .select('id, name')
+      .ilike('name', 'yamaha')
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) setFormData(prev => ({ ...prev, cliente: data.name, clienteId: data.id }));
+      });
+  }, [user?.role_name]);
 
   const calculateProgress = () => {
     let completed = 0;

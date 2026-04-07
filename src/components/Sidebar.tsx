@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 import { useUser } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { useSidebar } from '@/context/SidebarContext';
+import { isAllowed } from '@/lib/permissions';
 
 interface MenuItem {
   name: string;
@@ -84,10 +85,17 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 py-2 px-3">
-        {['GENERAL', 'OPERATIVO', 'LOGÍSTICA'].map((section, sectionIndex) => {
-          const sectionItems = menuItems.filter(item => item.section === section);
-          
-          return (
+        {(() => {
+          const visibleSections = ['GENERAL', 'OPERATIVO', 'LOGÍSTICA']
+            .map(section => ({
+              section,
+              items: menuItems
+                .filter(item => item.section === section)
+                .filter(item => isAllowed(user?.role_name, item.path)),
+            }))
+            .filter(({ items }) => items.length > 0);
+
+          return visibleSections.map(({ section, items }, idx) => (
             <div key={section} className="mb-6">
               {/* Section Label */}
               {!isCollapsed && (
@@ -97,12 +105,12 @@ export default function Sidebar() {
                   </h3>
                 </div>
               )}
-              
+
               {/* Section Items */}
               <div className="flex flex-col gap-[2px]">
-                {sectionItems.map((item) => {
-                  const isActive = mounted 
-                    ? (pathname === item.path || pathname.startsWith(`${item.path}/`)) 
+                {items.map((item) => {
+                  const isActive = mounted
+                    ? (pathname === item.path || pathname.startsWith(`${item.path}/`))
                     : false;
 
                   return (
@@ -138,14 +146,14 @@ export default function Sidebar() {
                   );
                 })}
               </div>
-              
-              {/* Section Divider */}
-              {sectionIndex < 2 && !isCollapsed && (
+
+              {/* Section Divider — only between visible sections */}
+              {idx < visibleSections.length - 1 && !isCollapsed && (
                 <div className="my-4 border-t border-[rgba(255,255,255,0.06)]" />
               )}
             </div>
-          );
-        })}
+          ));
+        })()}
       </nav>
 
       {/* Footer / Perfil de Usuario */}

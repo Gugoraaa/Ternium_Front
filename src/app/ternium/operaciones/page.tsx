@@ -4,8 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useOperacionesOrders } from '@/hooks/operaciones/useOperacionesOrders';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { type ExecutionDetailsStatus } from '@/types/operaciones';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 export default function OperacionesPage() {
+  useRoleGuard('/ternium/operaciones');
   const router = useRouter();
   const { orders: allOrders, loading, error, filters, pagination, updateFilters, updatePage } =
     useOperacionesOrders();

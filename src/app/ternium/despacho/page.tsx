@@ -4,8 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useDespachoOrders } from '@/hooks/despacho/useDespachoOrders';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { type ShippingInfoStatus } from '@/types/despacho';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 export default function DespachoPage() {
+  useRoleGuard('/ternium/despacho');
   const router = useRouter();
   const { orders, loading, error, filters, pagination, updateFilters, updatePage } =
     useDespachoOrders();

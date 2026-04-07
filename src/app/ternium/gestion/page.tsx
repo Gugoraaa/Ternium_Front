@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useOrders } from '@/hooks/orders/useOrders';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import StatusPill from '@/components/StatusPill';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 
 export default function DashboardOrdenes() {
+  useRoleGuard('/ternium/gestion');
   const router = useRouter();
   const { orders, loading, filteredOrders, filters, setFilters, resetFilters } = useOrders();
 

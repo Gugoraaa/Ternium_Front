@@ -4,8 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useManagementOrders } from '@/hooks/management/useManagementOrders';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { type DispatchValidationStatus } from '@/types/management';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 export default function ManagementPage() {
+  useRoleGuard('/ternium/management');
   const router = useRouter();
   const { orders, loading, error, filters, pagination, updateFilters, updatePage } =
     useManagementOrders();
