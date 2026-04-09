@@ -22,9 +22,18 @@ export default function TarimaScene({ simulation, riskLevel }: TarimaSceneProps)
   const isVertical = spec.coilOrientation === 'vertical';
   const coilColor = getRiskColors(riskLevel).threeHex;
 
-  const palletW = C.PALLET_WIDTH_MM * SCALE;
-  const palletL = C.PALLET_LENGTH_MM * SCALE;
   const palletH = C.PALLET_HEIGHT_MM * SCALE;
+
+  // One wooden base per stack.
+  // Vertical: each unique positionX is one column (stack of coils).
+  // Horizontal: each placement is its own stack (single coil per position).
+  const stackXPosMm = isVertical
+    ? [...new Set(placements.map((p) => p.positionX))]
+    : placements.map((p) => p.positionX);
+
+  // Base footprint per stack
+  const baseW = (isVertical ? spec.outerDiameter : spec.width) * SCALE;
+  const baseD = spec.outerDiameter * SCALE;
 
   return (
     <>
@@ -33,18 +42,22 @@ export default function TarimaScene({ simulation, riskLevel }: TarimaSceneProps)
       <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
       <directionalLight position={[-3, 5, -3]} intensity={0.4} />
 
-      {/* Pallet base — wooden euro-pallet */}
-      <mesh position={[0, -palletH / 2, 0]} receiveShadow>
-        <boxGeometry args={[palletL, palletH, palletW]} />
-        <meshStandardMaterial color="#8B6914" roughness={0.85} metalness={0.05} />
-      </mesh>
-
-      {/* Pallet planks texture lines (decorative boxes) */}
-      {[-0.3, 0, 0.3].map((zOffset) => (
-        <mesh key={zOffset} position={[0, -palletH / 2, zOffset * palletW]} receiveShadow>
-          <boxGeometry args={[palletL, palletH + 0.002, palletW * 0.15]} />
-          <meshStandardMaterial color="#6B4F0F" roughness={0.9} />
-        </mesh>
+      {/* Per-stack wooden bases */}
+      {stackXPosMm.map((xMm, i) => (
+        <group key={i} position={[xMm * SCALE, 0, 0]}>
+          {/* Main wooden block */}
+          <mesh position={[0, -palletH / 2, 0]} receiveShadow>
+            <boxGeometry args={[baseW, palletH, baseD]} />
+            <meshStandardMaterial color="#8B6914" roughness={0.85} metalness={0.05} />
+          </mesh>
+          {/* Plank texture lines (decorative) */}
+          {[-0.3, 0, 0.3].map((zOffset) => (
+            <mesh key={zOffset} position={[0, -palletH / 2, zOffset * baseD]} receiveShadow>
+              <boxGeometry args={[baseW, palletH + 0.002, baseD * 0.15]} />
+              <meshStandardMaterial color="#6B4F0F" roughness={0.9} />
+            </mesh>
+          ))}
+        </group>
       ))}
 
       {/* Coils */}
