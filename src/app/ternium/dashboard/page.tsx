@@ -10,7 +10,7 @@ import AlertBanner from '@/components/dashboard/AlertBanner';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RecentOrdersMini from '@/components/dashboard/RecentOrdersMini';
 
-const roleMoudleMap: Record<string, { link: string; label: string }> = {
+const roleModuleMap: Record<string, { link: string; label: string }> = {
   order_manager:     { link: '/ternium/gestion',      label: 'Gestión' },
   scheduler:         { link: '/ternium/programacion', label: 'Programación' },
   operations_manager:{ link: '/ternium/operaciones',  label: 'Operaciones' },
@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const { userName, kpis, recentOrders, alerts, quickActions, loading } = useDashboardData();
 
   const role = user?.role_name ?? '';
-  const module = roleMoudleMap[role] ?? { link: '/ternium/gestion', label: 'Gestión' };
+  const module = roleModuleMap[role] ?? { link: '/ternium/gestion', label: 'Gestión' };
 
   if (loading) {
     return (

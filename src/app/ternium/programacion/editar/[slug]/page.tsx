@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useOrderById } from '@/hooks/orders/useOrderById';
 import { useWorkers } from '@/hooks/useWorkers';
@@ -49,10 +50,11 @@ export default function EditarProgramacionPage() {
         .eq('id', order!.programing_instructions!.id);
 
       if (updateError) throw updateError;
-      
+
+      toast.success('Asignación guardada correctamente');
       router.push('/ternium/programacion');
     } catch (error) {
-      console.error('Error updating assignment:', error);
+      toast.error('Error al guardar la asignación. Intenta nuevamente.');
     } finally {
       setLoading(false);
     }

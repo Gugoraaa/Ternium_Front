@@ -26,23 +26,29 @@ export function useWorkers(): UseWorkersReturn {
       try {
         setLoading(true);
         setError(null);
-        
+
         const supabase = createClient();
-        
+
+        // Resolver el role_id por nombre en lugar de usar un valor hardcodeado
+        const { data: roleData, error: roleError } = await supabase
+          .from('roles')
+          .select('id')
+          .eq('name', 'scheduler')
+          .single();
+
+        if (roleError) throw roleError;
+
         const { data, error } = await supabase
           .from('users')
           .select('id, name, second_name, email')
-          .eq('role_id', 5)
+          .eq('role_id', roleData.id)
           .eq('active', true)
           .order('name', { ascending: true });
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         setWorkers(data || []);
       } catch (error) {
-        console.error('Error fetching workers:', error);
         setError('Error al cargar los trabajadores');
       } finally {
         setLoading(false);

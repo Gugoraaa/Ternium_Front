@@ -97,11 +97,21 @@ export default function DashboardOrdenes() {
                 {filteredOrders.length}
               </span>
             </div>
-            <div className="flex gap-1 text-slate-400">
-              <button aria-label="Descargar órdenes" className="hover:text-slate-700 transition-colors p-1.5 hover:bg-slate-100 rounded-lg">
+            <div className="flex gap-1 text-slate-300">
+              <button
+                aria-label="Descargar órdenes"
+                disabled
+                title="Próximamente"
+                className="cursor-not-allowed p-1.5 rounded-lg opacity-50"
+              >
                 <FiDownload size={18} />
               </button>
-              <button aria-label="Imprimir órdenes" className="hover:text-slate-700 transition-colors p-1.5 hover:bg-slate-100 rounded-lg">
+              <button
+                aria-label="Imprimir órdenes"
+                disabled
+                title="Próximamente"
+                className="cursor-not-allowed p-1.5 rounded-lg opacity-50"
+              >
                 <FiPrinter size={18} />
               </button>
             </div>
@@ -154,17 +164,6 @@ export default function DashboardOrdenes() {
             <span aria-live="polite" className="text-xs text-slate-400 font-medium">
               Mostrando {filteredOrders.length} de {orders.length} registros
             </span>
-            <div className="flex items-center gap-2">
-              <button className="px-3 py-1 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors">Anterior</button>
-              <div className="flex gap-1">
-                {[1, 2, 3].map((p) => (
-                  <button key={p} className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${p === 1 ? 'bg-gradient-to-br from-[#ff4301] to-[#e03200] text-white shadow-[0_2px_8px_rgba(255,67,1,0.4)]' : 'bg-white border border-slate-200 text-slate-600 hover:border-[#ff4301]/30 hover:text-[#ff4301]'}`}>
-                    {p}
-                  </button>
-                ))}
-              </div>
-              <button className="px-3 py-1 text-xs font-bold text-slate-800 hover:text-black transition-colors border border-slate-200 rounded-lg hover:border-slate-300">Siguiente</button>
-            </div>
           </div>
         </div>
 

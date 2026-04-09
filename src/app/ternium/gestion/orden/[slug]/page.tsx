@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { HiOutlineDownload, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineQuestionMarkCircle } from "react-icons/hi";
 import { FiSettings, FiPackage, FiTruck, FiActivity } from "react-icons/fi";
+import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AcceptOrderButton from '@/components/AcceptOrderButton';
@@ -108,7 +109,7 @@ export default function OrdenDetail() {
   
   async function rejectOrder() {
     if (!order) return;
-    
+
     try {
       const { error } = await supabase
         .from('orders')
@@ -117,10 +118,10 @@ export default function OrdenDetail() {
 
       if (error) throw error;
 
-      // Redirigir de vuelta a la lista de gestión
+      toast.success('Orden rechazada correctamente');
       router.push('/ternium/gestion');
     } catch (error) {
-      console.error('Error rejecting order:', error);
+      toast.error('Error al rechazar la orden. Intenta nuevamente.');
     }
   }
 
@@ -524,7 +525,10 @@ export default function OrdenDetail() {
                   >
                     <HiOutlineCheckCircle className="text-lg" /> Aprobar Orden
                   </AcceptOrderButton>
-                  <button className="flex-1 md:flex-none bg-[#475569] hover:bg-[#334155] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-slate-800">
+                  <button
+                    onClick={rejectOrder}
+                    className="flex-1 md:flex-none bg-[#475569] hover:bg-[#334155] text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-slate-800"
+                  >
                     <HiOutlineXCircle className="text-lg" /> Rechazar Orden
                   </button>
                 </>

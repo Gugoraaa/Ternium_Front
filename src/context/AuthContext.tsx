@@ -38,31 +38,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    supabase
-      .from('users')
-      .select('role_id')
-      .eq('id', pendingUser.id)
-      .single()
-      .then(({ data: userData }) => {
+    (async () => {
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role_id')
+          .eq('id', pendingUser.id)
+          .single();
+
         const roleId = userData?.role_id;
         if (!roleId) {
           setUser(pendingUser);
           setLoading(false);
           return;
         }
-        supabase
+
+        const { data: roleData } = await supabase
           .from('roles')
           .select('name')
           .eq('id', roleId)
-          .single()
-          .then(({ data: roleData }) => {
-            setUser({
-              ...pendingUser,
-              role_name: roleData?.name || 'No Role Assigned',
-            });
-            setLoading(false);
-          });
-      });
+          .single();
+
+        setUser({
+          ...pendingUser,
+          role_name: roleData?.name || 'No Role Assigned',
+        });
+        setLoading(false);
+      } catch {
+        setUser(pendingUser);
+        setLoading(false);
+      }
+    })();
   }, [pendingUser]);
 
   return (

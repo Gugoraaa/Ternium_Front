@@ -5,6 +5,8 @@ import { FaEllipsisV } from 'react-icons/fa';
 import { FiCheck, FiX } from 'react-icons/fi';
 import { createClient } from '@/lib/supabase/client';
 
+const supabase = createClient();
+
 const ROLE_LABELS: Record<string, string> = {
   user_admin:          'Administrador',
   admin:               'Super Admin',
@@ -45,7 +47,6 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, dele
   const [selectedRoleId, setSelectedRoleId] = useState<number | ''>('');
   const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
 
   // Cargar roles disponibles
   useEffect(() => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from '@/context/AuthContext';
 import type { OrderDetails, OrderSpecs, OrderOfferWithSpecs } from '@/types/orders';
@@ -42,7 +43,7 @@ export default function AcceptOrderButton({
 
       if (error) throw error;
 
-      // Si es variante 'gestion' y hay contraoferta, insertar specs
+      // Si es variante 'gestion' y hay contraoferta, insertar specs y vincular a la orden
       if (variant === 'gestion' && orderOffer?.specs) {
         const specsToInsert = {
           product_id: order.product_id,
@@ -56,7 +57,21 @@ export default function AcceptOrderButton({
           shipping_packaging: orderOffer.specs.shipping_packaging ?? order.specs?.shipping_packaging,
         };
 
-        await supabase.from('specs').insert(specsToInsert);
+        const { data: newSpecs, error: specsError } = await supabase
+          .from('specs')
+          .insert(specsToInsert)
+          .select('id')
+          .single();
+
+        if (specsError) throw specsError;
+
+        if (newSpecs?.id) {
+          const { error: linkError } = await supabase
+            .from('orders')
+            .update({ specs_id: newSpecs.id })
+            .eq('id', order.id);
+          if (linkError) throw linkError;
+        }
       }
 
       // Redirigir según la variante
@@ -64,6 +79,7 @@ export default function AcceptOrderButton({
       router.push(redirectPath);
     } catch (error) {
       console.error('Error accepting order:', error);
+      toast.error('Error al procesar la orden. Intenta nuevamente.');
     }
   }
 
