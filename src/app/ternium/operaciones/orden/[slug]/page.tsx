@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useOperacionDetail } from '@/hooks/operaciones/useOperacionDetail';
 import { type ExecutionDetailsStatus } from '@/types/operaciones';
@@ -38,6 +39,10 @@ export default function OperacionDetailPage() {
   const isValidated = order?.execution_details?.status === 'Aceptado';
 
   const handleSave = async () => {
+    if (formData.weight !== '' && parseFloat(formData.weight) < 1) {
+      toast.error('El peso real debe ser al menos 1 ton');
+      return;
+    }
     await saveExecutionDetails({
       weight: formData.weight ? parseFloat(formData.weight) : null,
       shipping_packaging: formData.shipping_packaging,
@@ -203,7 +208,8 @@ export default function OperacionDetailPage() {
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="1"
                     value={formData.weight}
                     onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                     disabled={isValidated}

@@ -17,6 +17,7 @@ import AcceptOrderButton from '@/components/AcceptOrderButton';
 import StatusPill from '@/components/StatusPill';
 import TarimaLoadingFallback from '@/components/tarima/TarimaLoadingFallback';
 import { useUser } from '@/context/AuthContext';
+import toast from 'react-hot-toast';
 import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
 import type { CoilOrientation } from '@/lib/tarima/types';
 
@@ -171,7 +172,26 @@ export default function DetalleEdicionOrden() {
 
     async function requestReview() {
         if (!order || !order.specs) return;
-        
+
+        // Validar campos numéricos antes de enviar
+        const effInner = editedSpecs?.inner_diameter ?? order.specs.inner_diameter;
+        const effOuter = editedSpecs?.outer_diameter ?? order.specs.outer_diameter;
+        const effWidth = editedSpecs?.width ?? order.specs.width;
+        const effMinW = editedSpecs?.minimum_shipping_weight ?? order.specs.minimum_shipping_weight;
+        const effMaxW = editedSpecs?.maximum_shipping_weight ?? order.specs.maximum_shipping_weight;
+        const effPieces = editedSpecs?.pieces_per_package ?? order.specs.pieces_per_package;
+        const effPalletW = editedSpecs?.maximum_pallet_width ?? order.specs.maximum_pallet_width;
+
+        if (effInner != null && effInner < 1) { toast.error('El diámetro interno debe ser al menos 1 mm'); return; }
+        if (effOuter != null && effOuter < 1) { toast.error('El diámetro externo debe ser al menos 1 mm'); return; }
+        if (effInner != null && effOuter != null && effOuter <= effInner) { toast.error('El diámetro externo debe ser mayor al diámetro interno'); return; }
+        if (effWidth != null && effWidth < 1) { toast.error('El ancho debe ser al menos 1 mm'); return; }
+        if (effMinW != null && effMinW < 0.01) { toast.error('El peso mínimo debe ser mayor a 0'); return; }
+        if (effMaxW != null && effMaxW < 0.01) { toast.error('El peso máximo debe ser mayor a 0'); return; }
+        if (effMinW != null && effMaxW != null && effMaxW < effMinW) { toast.error('El peso máximo debe ser mayor o igual al peso mínimo'); return; }
+        if (effPieces != null && (effPieces < 1 || !Number.isInteger(effPieces))) { toast.error('Las piezas por paquete deben ser un número entero mayor a 0'); return; }
+        if (effPalletW != null && effPalletW < 1) { toast.error('El ancho máximo de tarima debe ser al menos 1 mm'); return; }
+
         try {
             // Primero cambiar el status a 'Revision Operador'
             
@@ -377,9 +397,10 @@ export default function DetalleEdicionOrden() {
             {/* Diámetro Interno */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Diámetro Interno (mm)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="1"
+                min="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs?.inner_diameter ?? demoOrderOffer?.specs?.inner_diameter ?? order.specs?.inner_diameter))}
                 onChange={(e) => {
@@ -404,9 +425,10 @@ export default function DetalleEdicionOrden() {
                   <span className="text-[9px] font-black text-white bg-orange-400 px-2 py-0.5 rounded uppercase">Modificado por cliente</span>
                 )}
               </div>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="1"
+                min="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs?.outer_diameter ?? demoOrderOffer?.specs?.outer_diameter ?? order.specs?.outer_diameter))}
                 onChange={(e) => {
@@ -428,9 +450,10 @@ export default function DetalleEdicionOrden() {
             {/* Ancho */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ancho (mm)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="1"
+                min="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs?.width ?? demoOrderOffer?.specs?.width ?? order.specs?.width))}
                 onChange={(e) => {
@@ -450,9 +473,10 @@ export default function DetalleEdicionOrden() {
             {/* Peso Mínimo */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peso Mínimo (kg)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="1"
+                min="0.01"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs?.minimum_shipping_weight ?? demoOrderOffer?.specs?.minimum_shipping_weight ?? order.specs?.minimum_shipping_weight))}
                 onChange={(e) => {
@@ -472,9 +496,10 @@ export default function DetalleEdicionOrden() {
             {/* Peso Máximo */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peso Máximo (kg)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="1"
+                min="0.01"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs?.maximum_shipping_weight ?? demoOrderOffer?.specs?.maximum_shipping_weight ?? order.specs?.maximum_shipping_weight))}
                 onChange={(e) => {
@@ -494,9 +519,10 @@ export default function DetalleEdicionOrden() {
             {/* Piezas por Paquete */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Piezas por Paquete</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="1"
+                min="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs?.pieces_per_package ?? demoOrderOffer?.specs?.pieces_per_package ?? order.specs?.pieces_per_package))}
                 onChange={(e) => {
@@ -516,9 +542,10 @@ export default function DetalleEdicionOrden() {
             {/* Ancho Máximo Tarima */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ancho Máximo Tarima (mm)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 step="1"
+                min="1"
                 disabled={!canEdit}
                 value={getInputValue((editedSpecs?.maximum_pallet_width ?? demoOrderOffer?.specs?.maximum_pallet_width ?? order.specs?.maximum_pallet_width))}
                 onChange={(e) => {
