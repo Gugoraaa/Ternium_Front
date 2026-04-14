@@ -11,7 +11,7 @@ import UsuariosTable from '@/components/usuarios/UsuariosTable';
 
 export default function UsuariosPage() {
   useRoleGuard('/ternium/usuarios');
-  const { usuarios, loading, toggleActive, changeRole, deleteUser } = useUsuarioData();
+  const { usuarios, loading, toggleActive, changeRole, offboardUser } = useUsuarioData();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -37,7 +37,7 @@ export default function UsuariosPage() {
         usuarios={filteredUsuarios}
         toggleActive={toggleActive}
         changeRole={changeRole}
-        deleteUser={deleteUser}
+        offboardUser={offboardUser}
       />
     </div>
   );

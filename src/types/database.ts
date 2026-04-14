@@ -597,6 +597,8 @@ export type Database = {
           email: string
           id: string
           name: string
+          offboarded_at: string | null
+          offboarded_by: string | null
           role_id: number
           second_name: string
         }
@@ -606,6 +608,8 @@ export type Database = {
           email: string
           id?: string
           name: string
+          offboarded_at?: string | null
+          offboarded_by?: string | null
           role_id: number
           second_name: string
         }
@@ -615,10 +619,19 @@ export type Database = {
           email?: string
           id?: string
           name?: string
+          offboarded_at?: string | null
+          offboarded_by?: string | null
           role_id?: number
           second_name?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "users_offboarded_by_fkey"
+            columns: ["offboarded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "users_role_id_fkey"
             columns: ["role_id"]

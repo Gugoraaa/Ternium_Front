@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { FaEllipsisV } from 'react-icons/fa';
 import { FiCheck, FiX } from 'react-icons/fi';
 import { createClient } from '@/lib/supabase/client';
+import type { UsuarioListItem } from '@/hooks/usuarios/useUsuarioData';
 
 const supabase = createClient();
 
@@ -33,20 +34,26 @@ function getRoleStyle(role: string) {
 }
 
 interface UsuariosTableProps {
-  usuarios: any[];
-  toggleActive: (userId: string, currentActive: boolean) => Promise<void>;
+  usuarios: UsuarioListItem[];
+  toggleActive: (userId: string, currentActive: boolean, isOffboarded: boolean) => Promise<void>;
   changeRole: (userId: string, newRoleId: number) => Promise<void>;
-  deleteUser: (userId: string) => Promise<void>;
+  offboardUser: (userId: string) => Promise<void>;
 }
 
 type MenuMode = 'menu' | 'changeRole' | 'confirmDelete';
 
-export default function UsuariosTable({ usuarios, toggleActive, changeRole, deleteUser }: UsuariosTableProps) {
+export default function UsuariosTable({ usuarios, toggleActive, changeRole, offboardUser }: UsuariosTableProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuMode, setMenuMode] = useState<MenuMode>('menu');
   const [selectedRoleId, setSelectedRoleId] = useState<number | ''>('');
   const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  function closeMenu() {
+    setOpenMenuId(null);
+    setMenuMode('menu');
+    setSelectedRoleId('');
+  }
 
   // Cargar roles disponibles
   useEffect(() => {
@@ -73,15 +80,9 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, dele
     setSelectedRoleId('');
   }
 
-  function closeMenu() {
-    setOpenMenuId(null);
-    setMenuMode('menu');
-    setSelectedRoleId('');
-  }
-
-  async function handleToggleActive(userId: string, active: boolean) {
+  async function handleToggleActive(userId: string, active: boolean, isOffboarded: boolean) {
     closeMenu();
-    await toggleActive(userId, active);
+    await toggleActive(userId, active, isOffboarded);
   }
 
   async function handleChangeRole(userId: string) {
@@ -90,9 +91,9 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, dele
     await changeRole(userId, Number(selectedRoleId));
   }
 
-  async function handleDelete(userId: string) {
+  async function handleOffboard(userId: string) {
     closeMenu();
-    await deleteUser(userId);
+    await offboardUser(userId);
   }
 
   return (
@@ -111,6 +112,18 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, dele
           {usuarios.map((user) => {
             const roleName = user.roles?.name ?? '';
             const isOpen = openMenuId === user.id;
+            const isOffboarded = Boolean(user.offboarded_at);
+            const statusLabel = isOffboarded ? 'De baja' : user.active ? 'Activo' : 'Inactivo';
+            const statusClasses = isOffboarded
+              ? 'text-red-600'
+              : user.active
+                ? 'text-green-500'
+                : 'text-gray-400';
+            const statusDotClasses = isOffboarded
+              ? 'bg-red-500'
+              : user.active
+                ? 'bg-green-500'
+                : 'bg-gray-400';
 
             return (
               <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
@@ -136,9 +149,9 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, dele
 
                 {/* Estado */}
                 <td className="p-5">
-                  <span className={`flex items-center gap-1.5 text-xs font-bold ${user.active ? 'text-green-500' : 'text-gray-400'}`}>
-                    <span className={`w-2 h-2 rounded-full ${user.active ? 'bg-green-500' : 'bg-gray-400'}`} />
-                    {user.active ? 'Activo' : 'Inactivo'}
+                  <span className={`flex items-center gap-1.5 text-xs font-bold ${statusClasses}`}>
+                    <span className={`w-2 h-2 rounded-full ${statusDotClasses}`} />
+                    {statusLabel}
                   </span>
                 </td>
 
@@ -160,35 +173,46 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, dele
                         {menuMode === 'menu' && (
                           <>
                             {/* Activar / Desactivar */}
-                            <button
-                              onClick={() => handleToggleActive(user.id, user.active)}
-                              className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${user.active ? 'bg-gray-400' : 'bg-green-500'}`} />
-                              {user.active ? 'Desactivar usuario' : 'Activar usuario'}
-                            </button>
+                            {!isOffboarded && (
+                              <button
+                                onClick={() => handleToggleActive(user.id, user.active, isOffboarded)}
+                                className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${user.active ? 'bg-gray-400' : 'bg-green-500'}`} />
+                                {user.active ? 'Desactivar usuario' : 'Activar usuario'}
+                              </button>
+                            )}
 
                             {/* Cambiar rol */}
                             <button
                               onClick={() => {
+                                if (isOffboarded) return;
                                 setMenuMode('changeRole');
                                 setSelectedRoleId(user.roles?.id ?? '');
                               }}
-                              className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                              disabled={isOffboarded}
+                              className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:text-slate-300 disabled:bg-white disabled:cursor-not-allowed flex items-center gap-2.5 transition-colors"
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                               Cambiar rol
                             </button>
 
-                            {/* Separador + Eliminar */}
+                            {/* Separador + Baja segura */}
                             <div className="border-t border-slate-100 my-1" />
-                            <button
-                              onClick={() => setMenuMode('confirmDelete')}
-                              className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                              Eliminar usuario
-                            </button>
+                            {isOffboarded ? (
+                              <div className="w-full text-left px-4 py-2.5 text-sm text-slate-400 flex items-center gap-2.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                                Usuario dado de baja
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setMenuMode('confirmDelete')}
+                                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                Dar de baja
+                              </button>
+                            )}
                           </>
                         )}
 
@@ -227,8 +251,8 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, dele
 
                         {menuMode === 'confirmDelete' && (
                           <div className="p-3 flex flex-col gap-2">
-                            <p className="text-sm font-semibold text-slate-800">¿Eliminar a {user.name}?</p>
-                            <p className="text-[11px] text-slate-400">Esta acción no se puede deshacer.</p>
+                            <p className="text-sm font-semibold text-slate-800">¿Dar de baja a {user.name}?</p>
+                            <p className="text-[11px] text-slate-400">Bloquea el acceso del usuario y conserva su historial operativo.</p>
                             <div className="flex gap-2">
                               <button
                                 onClick={closeMenu}
@@ -237,7 +261,7 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, dele
                                 <FiX size={12} /> Cancelar
                               </button>
                               <button
-                                onClick={() => handleDelete(user.id)}
+                                onClick={() => handleOffboard(user.id)}
                                 className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center gap-1"
                               >
                                 <FiCheck size={12} /> Confirmar

@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Only set state inside the callback — no Supabase queries here
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setPendingUser(session?.user ?? null);
       }
     });
@@ -32,6 +32,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (pendingUser === undefined) return;
 
+    async function signOutUnauthorizedUser() {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // Ignore local sign out errors; we still want to drop app state.
+      }
+      setUser(null);
+      setPendingUser(null);
+      setLoading(false);
+    }
+
     if (!pendingUser) {
       setUser(null);
       setLoading(false);
@@ -40,28 +51,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     (async () => {
       try {
-        const { data: userData } = await supabase
+        const { data: userData, error: userError } = await supabase
           .from('users')
-          .select('role_id')
+          .select('role_id, active, offboarded_at')
           .eq('id', pendingUser.id)
           .single();
 
-        const roleId = userData?.role_id;
-        if (!roleId) {
-          setUser(pendingUser);
-          setLoading(false);
+        if (userError) {
+          if (userError.code === 'PGRST116') {
+            await signOutUnauthorizedUser();
+            return;
+          }
+          throw userError;
+        }
+
+        if (!userData?.active || userData.offboarded_at) {
+          await signOutUnauthorizedUser();
           return;
         }
 
-        const { data: roleData } = await supabase
+        const roleId = userData?.role_id;
+        if (!roleId) {
+          await signOutUnauthorizedUser();
+          return;
+        }
+
+        const { data: roleData, error: roleError } = await supabase
           .from('roles')
           .select('name')
           .eq('id', roleId)
           .single();
 
+        if (roleError || !roleData?.name) {
+          if (roleError?.code === 'PGRST116' || !roleData?.name) {
+            await signOutUnauthorizedUser();
+            return;
+          }
+          throw roleError;
+        }
+
         setUser({
           ...pendingUser,
-          role_name: roleData?.name || 'No Role Assigned',
+          role_name: roleData.name,
         });
         setLoading(false);
       } catch {
