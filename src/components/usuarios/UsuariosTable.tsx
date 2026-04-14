@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { FaEllipsisV } from 'react-icons/fa';
 import { FiCheck, FiX } from 'react-icons/fi';
 import { createClient } from '@/lib/supabase/client';
@@ -38,21 +39,32 @@ interface UsuariosTableProps {
   toggleActive: (userId: string, currentActive: boolean, isOffboarded: boolean) => Promise<void>;
   changeRole: (userId: string, newRoleId: number) => Promise<void>;
   offboardUser: (userId: string) => Promise<void>;
+  reactivateUser: (userId: string) => Promise<void>;
 }
 
-type MenuMode = 'menu' | 'changeRole' | 'confirmDelete';
+type MenuMode = 'menu' | 'changeRole' | 'confirmDelete' | 'confirmReactivate';
+type MenuPosition = {
+  direction: 'up' | 'down';
+  right: number;
+  top?: number;
+  bottom?: number;
+};
 
-export default function UsuariosTable({ usuarios, toggleActive, changeRole, offboardUser }: UsuariosTableProps) {
+export default function UsuariosTable({ usuarios, toggleActive, changeRole, offboardUser, reactivateUser }: UsuariosTableProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuMode, setMenuMode] = useState<MenuMode>('menu');
   const [selectedRoleId, setSelectedRoleId] = useState<number | ''>('');
   const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   function closeMenu() {
     setOpenMenuId(null);
     setMenuMode('menu');
     setSelectedRoleId('');
+    setMenuPosition(null);
+    triggerRef.current = null;
   }
 
   // Cargar roles disponibles
@@ -66,15 +78,44 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, offb
   useEffect(() => {
     if (!openMenuId) return;
     function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(target)
+      ) {
         closeMenu();
       }
     }
+
+    function handleViewportChange() {
+      closeMenu();
+    }
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
   }, [openMenuId]);
 
-  function openMenu(userId: string) {
+  function openMenu(userId: string, button: HTMLButtonElement) {
+    const rect = button.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const shouldOpenUp = spaceBelow < 260 && rect.top > spaceBelow;
+
+    triggerRef.current = button;
+    setMenuPosition({
+      direction: shouldOpenUp ? 'up' : 'down',
+      right: Math.max(window.innerWidth - rect.right, 16),
+      top: shouldOpenUp ? undefined : rect.bottom + 6,
+      bottom: shouldOpenUp ? window.innerHeight - rect.top + 6 : undefined,
+    });
     setOpenMenuId(userId);
     setMenuMode('menu');
     setSelectedRoleId('');
@@ -94,6 +135,150 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, offb
   async function handleOffboard(userId: string) {
     closeMenu();
     await offboardUser(userId);
+  }
+
+  async function handleReactivate(userId: string) {
+    closeMenu();
+    await reactivateUser(userId);
+  }
+
+  function renderMenu(user: UsuarioListItem) {
+    if (!menuPosition || typeof document === 'undefined') return null;
+
+    const isOffboarded = Boolean(user.offboarded_at);
+    const menuStyles = menuPosition.direction === 'up'
+      ? { right: menuPosition.right, bottom: menuPosition.bottom }
+      : { right: menuPosition.right, top: menuPosition.top };
+
+    return createPortal(
+      <div
+        ref={menuRef}
+        className="fixed w-56 bg-white rounded-xl border border-slate-200 shadow-[0_8px_24px_rgba(15,23,42,0.12)] z-[100] overflow-hidden"
+        style={menuStyles}
+      >
+        {menuMode === 'menu' && (
+          <>
+            {!isOffboarded && (
+              <button
+                onClick={() => handleToggleActive(user.id, user.active, isOffboarded)}
+                className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${user.active ? 'bg-gray-400' : 'bg-green-500'}`} />
+                {user.active ? 'Desactivar usuario' : 'Activar usuario'}
+              </button>
+            )}
+
+            <button
+              onClick={() => {
+                if (isOffboarded) return;
+                setMenuMode('changeRole');
+                setSelectedRoleId(user.roles?.id ?? '');
+              }}
+              disabled={isOffboarded}
+              className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:text-slate-300 disabled:bg-white disabled:cursor-not-allowed flex items-center gap-2.5 transition-colors"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              Cambiar rol
+            </button>
+
+            <div className="border-t border-slate-100 my-1" />
+            {isOffboarded ? (
+              <button
+                onClick={() => setMenuMode('confirmReactivate')}
+                className="w-full text-left px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50 flex items-center gap-2.5 transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Reactivar usuario
+              </button>
+            ) : (
+              <button
+                onClick={() => setMenuMode('confirmDelete')}
+                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                Dar de baja
+              </button>
+            )}
+          </>
+        )}
+
+        {menuMode === 'changeRole' && (
+          <div className="p-3 flex flex-col gap-2">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cambiar rol</p>
+            <select
+              value={selectedRoleId}
+              onChange={(e) => setSelectedRoleId(Number(e.target.value))}
+              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:ring-2 focus:ring-[#ff4301]/20 focus:border-[#ff4301]/40 outline-none"
+            >
+              <option value="">Seleccionar rol</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {ROLE_LABELS[r.name] ?? r.name}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                onClick={closeMenu}
+                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleChangeRole(user.id)}
+                disabled={!selectedRoleId}
+                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-[#ff4301] text-white hover:bg-[#e63d01] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {menuMode === 'confirmDelete' && (
+          <div className="p-3 flex flex-col gap-2">
+            <p className="text-sm font-semibold text-slate-800">¿Dar de baja a {user.name}?</p>
+            <p className="text-[11px] text-slate-400">Bloquea el acceso del usuario y conserva su historial operativo.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={closeMenu}
+                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1"
+              >
+                <FiX size={12} /> Cancelar
+              </button>
+              <button
+                onClick={() => handleOffboard(user.id)}
+                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center gap-1"
+              >
+                <FiCheck size={12} /> Confirmar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {menuMode === 'confirmReactivate' && (
+          <div className="p-3 flex flex-col gap-2">
+            <p className="text-sm font-semibold text-slate-800">¿Reactivar a {user.name}?</p>
+            <p className="text-[11px] text-slate-400">Reactiva el acceso del usuario y le permite iniciar sesión nuevamente.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={closeMenu}
+                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1"
+              >
+                <FiX size={12} /> Cancelar
+              </button>
+              <button
+                onClick={() => handleReactivate(user.id)}
+                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1"
+              >
+                <FiCheck size={12} /> Reactivar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>,
+      document.body
+    );
   }
 
   return (
@@ -157,121 +342,17 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, offb
 
                 {/* Acciones */}
                 <td className="p-5 text-center">
-                  <div className="relative inline-block" ref={isOpen ? menuRef : null}>
+                  <div className="relative inline-block">
                     <button
                       aria-label={`Acciones para ${user.name} ${user.second_name}`}
                       aria-expanded={isOpen}
-                      onClick={() => isOpen ? closeMenu() : openMenu(user.id)}
+                      onClick={(e) => isOpen ? closeMenu() : openMenu(user.id, e.currentTarget)}
                       className={`p-2 rounded-lg transition-colors ${isOpen ? 'bg-slate-100 text-slate-700' : 'text-gray-300 hover:text-gray-600 hover:bg-slate-50'}`}
                     >
                       <FaEllipsisV aria-hidden="true" size={14} />
                     </button>
 
-                    {isOpen && (
-                      <div className="absolute right-0 mt-1 w-56 bg-white rounded-xl border border-slate-200 shadow-[0_8px_24px_rgba(15,23,42,0.12)] z-50 overflow-hidden">
-
-                        {menuMode === 'menu' && (
-                          <>
-                            {/* Activar / Desactivar */}
-                            {!isOffboarded && (
-                              <button
-                                onClick={() => handleToggleActive(user.id, user.active, isOffboarded)}
-                                className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                              >
-                                <span className={`w-1.5 h-1.5 rounded-full ${user.active ? 'bg-gray-400' : 'bg-green-500'}`} />
-                                {user.active ? 'Desactivar usuario' : 'Activar usuario'}
-                              </button>
-                            )}
-
-                            {/* Cambiar rol */}
-                            <button
-                              onClick={() => {
-                                if (isOffboarded) return;
-                                setMenuMode('changeRole');
-                                setSelectedRoleId(user.roles?.id ?? '');
-                              }}
-                              disabled={isOffboarded}
-                              className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:text-slate-300 disabled:bg-white disabled:cursor-not-allowed flex items-center gap-2.5 transition-colors"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                              Cambiar rol
-                            </button>
-
-                            {/* Separador + Baja segura */}
-                            <div className="border-t border-slate-100 my-1" />
-                            {isOffboarded ? (
-                              <div className="w-full text-left px-4 py-2.5 text-sm text-slate-400 flex items-center gap-2.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                                Usuario dado de baja
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setMenuMode('confirmDelete')}
-                                className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                Dar de baja
-                              </button>
-                            )}
-                          </>
-                        )}
-
-                        {menuMode === 'changeRole' && (
-                          <div className="p-3 flex flex-col gap-2">
-                            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cambiar rol</p>
-                            <select
-                              value={selectedRoleId}
-                              onChange={(e) => setSelectedRoleId(Number(e.target.value))}
-                              className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:ring-2 focus:ring-[#ff4301]/20 focus:border-[#ff4301]/40 outline-none"
-                            >
-                              <option value="">Seleccionar rol</option>
-                              {roles.map((r) => (
-                                <option key={r.id} value={r.id}>
-                                  {ROLE_LABELS[r.name] ?? r.name}
-                                </option>
-                              ))}
-                            </select>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={closeMenu}
-                                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                              >
-                                Cancelar
-                              </button>
-                              <button
-                                onClick={() => handleChangeRole(user.id)}
-                                disabled={!selectedRoleId}
-                                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-[#ff4301] text-white hover:bg-[#e63d01] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                              >
-                                Guardar
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {menuMode === 'confirmDelete' && (
-                          <div className="p-3 flex flex-col gap-2">
-                            <p className="text-sm font-semibold text-slate-800">¿Dar de baja a {user.name}?</p>
-                            <p className="text-[11px] text-slate-400">Bloquea el acceso del usuario y conserva su historial operativo.</p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={closeMenu}
-                                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1"
-                              >
-                                <FiX size={12} /> Cancelar
-                              </button>
-                              <button
-                                onClick={() => handleOffboard(user.id)}
-                                className="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center justify-center gap-1"
-                              >
-                                <FiCheck size={12} /> Confirmar
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                      </div>
-                    )}
+                    {isOpen && renderMenu(user)}
                   </div>
                 </td>
               </tr>

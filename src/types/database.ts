@@ -599,6 +599,8 @@ export type Database = {
           name: string
           offboarded_at: string | null
           offboarded_by: string | null
+          reactivated_at: string | null
+          reactivated_by: string | null
           role_id: number
           second_name: string
         }
@@ -610,6 +612,8 @@ export type Database = {
           name: string
           offboarded_at?: string | null
           offboarded_by?: string | null
+          reactivated_at?: string | null
+          reactivated_by?: string | null
           role_id: number
           second_name: string
         }
@@ -621,6 +625,8 @@ export type Database = {
           name?: string
           offboarded_at?: string | null
           offboarded_by?: string | null
+          reactivated_at?: string | null
+          reactivated_by?: string | null
           role_id?: number
           second_name?: string
         }
@@ -628,6 +634,13 @@ export type Database = {
           {
             foreignKeyName: "users_offboarded_by_fkey"
             columns: ["offboarded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_reactivated_by_fkey"
+            columns: ["reactivated_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

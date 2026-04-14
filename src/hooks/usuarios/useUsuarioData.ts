@@ -19,6 +19,34 @@ export function useUsuarioData() {
     const [loading, setLoading] = useState(true);
     const [sessionReady, setSessionReady] = useState<boolean | null>(null);
 
+    async function getFunctionErrorMessage(error: unknown, fallback: string) {
+        let message = fallback;
+
+        if (error instanceof Error && error.message) {
+            message = error.message;
+        }
+
+        if (
+            typeof error === 'object' &&
+            error !== null &&
+            'context' in error &&
+            error.context instanceof Response
+        ) {
+            try {
+                const errorBody = await error.context.json();
+                if (typeof errorBody?.error === 'string' && errorBody.error.trim()) {
+                    message = errorBody.error;
+                } else if (typeof errorBody?.message === 'string' && errorBody.message.trim()) {
+                    message = errorBody.message;
+                }
+            } catch {
+                // Fall back to the generic or SDK-provided message.
+            }
+        }
+
+        return message;
+    }
+
     useEffect(() => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
           if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
@@ -95,31 +123,27 @@ export function useUsuarioData() {
             await fetchUsuarios();
             toast.success('Usuario dado de baja correctamente');
         } catch (error) {
-            let message = 'Error al dar de baja al usuario';
-
-            if (error instanceof Error && error.message) {
-                message = error.message;
-            }
-
-            if (
-                typeof error === 'object' &&
-                error !== null &&
-                'context' in error &&
-                error.context instanceof Response
-            ) {
-                try {
-                    const errorBody = await error.context.json();
-                    if (typeof errorBody?.error === 'string' && errorBody.error.trim()) {
-                        message = errorBody.error;
-                    }
-                } catch {
-                    // Fall back to the generic or SDK-provided message.
-                }
-            }
-
+            const message = await getFunctionErrorMessage(error, 'Error al dar de baja al usuario');
             toast.error(message);
         }
     }
 
-    return { usuarios, loading, toggleActive, changeRole, offboardUser };
+    async function reactivateUser(userId: string) {
+        try {
+            const { data, error } = await supabase.functions.invoke('admin-reactivate-user', {
+                body: { target_user_id: userId },
+            });
+
+            if (error) throw error;
+            if (!data?.success) throw new Error('La función no devolvió una respuesta válida');
+
+            await fetchUsuarios();
+            toast.success('Usuario reactivado correctamente');
+        } catch (error) {
+            const message = await getFunctionErrorMessage(error, 'Error al reactivar al usuario');
+            toast.error(message);
+        }
+    }
+
+    return { usuarios, loading, toggleActive, changeRole, offboardUser, reactivateUser };
 }
