@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from '@/context/AuthContext';
-import type { OrderDetails, OrderSpecs, OrderOfferWithSpecs } from '@/types/orders';
+import type { OrderDetails, OrderOfferWithSpecs } from '@/types/orders';
 
 interface AcceptOrderButtonProps {
   order: OrderDetails;
@@ -55,6 +55,7 @@ export default function AcceptOrderButton({
           pieces_per_package: orderOffer.specs.pieces_per_package ?? order.specs?.pieces_per_package,
           maximum_pallet_width: orderOffer.specs.maximum_pallet_width ?? order.specs?.maximum_pallet_width,
           shipping_packaging: orderOffer.specs.shipping_packaging ?? order.specs?.shipping_packaging,
+          coil_orientation: orderOffer.specs.coil_orientation ?? order.specs?.coil_orientation,
         };
 
         const { data: newSpecs, error: specsError } = await supabase

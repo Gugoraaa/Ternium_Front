@@ -9,7 +9,17 @@ import type {
   SimulationResult,
   ValidationResult,
   ValidationViolation,
+  TarimaSubmissionGuard,
 } from './types';
+
+export const TARIMA_INPUT_LIMITS = {
+  INNER_DIAMETER_MM: { min: 1, max: 2000 },
+  OUTER_DIAMETER_MM: { min: 1, max: 4000 },
+  WIDTH_MM: { min: 1, max: 3000 },
+  SHIPPING_WEIGHT_TONNES: { min: 0.01, max: 100 },
+  PIECES_PER_PACKAGE: { min: 1, max: 100 },
+  MAXIMUM_PALLET_WIDTH_MM: { min: 1, max: 6000 },
+} as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -33,6 +43,10 @@ function makeViolation(
   message: string
 ): ValidationViolation {
   return { field, actualValue: actual, limitValue: limit, percentage: pct(actual, limit), message };
+}
+
+function isPresent(v: number | string | null | undefined): boolean {
+  return v !== null && v !== undefined && v !== '';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,6 +81,73 @@ export function normalizeTarimaSpec(
     shippingPackaging: raw.shipping_packaging ?? '',
     coilOrientation: orientation,
   };
+}
+
+export function validateTarimaInputs(raw: RawDbSpec): string[] {
+  const errors: string[] = [];
+  const innerDiameter = toNum(raw.inner_diameter);
+  const outerDiameter = toNum(raw.outer_diameter);
+  const width = toNum(raw.width);
+  const minimumShippingWeight = toNum(raw.minimum_shipping_weight);
+  const maximumShippingWeight = toNum(raw.maximum_shipping_weight);
+  const piecesPerPackage = toNum(raw.pieces_per_package);
+  const maximumPalletWidth = toNum(raw.maximum_pallet_width);
+
+  if (!isPresent(raw.inner_diameter) || innerDiameter < TARIMA_INPUT_LIMITS.INNER_DIAMETER_MM.min) {
+    errors.push(`El diámetro interno debe ser mayor o igual a ${TARIMA_INPUT_LIMITS.INNER_DIAMETER_MM.min} mm.`);
+  } else if (innerDiameter > TARIMA_INPUT_LIMITS.INNER_DIAMETER_MM.max) {
+    errors.push(`El diámetro interno no puede exceder ${TARIMA_INPUT_LIMITS.INNER_DIAMETER_MM.max} mm.`);
+  }
+
+  if (!isPresent(raw.outer_diameter) || outerDiameter < TARIMA_INPUT_LIMITS.OUTER_DIAMETER_MM.min) {
+    errors.push(`El diámetro externo debe ser mayor o igual a ${TARIMA_INPUT_LIMITS.OUTER_DIAMETER_MM.min} mm.`);
+  } else if (outerDiameter > TARIMA_INPUT_LIMITS.OUTER_DIAMETER_MM.max) {
+    errors.push(`El diámetro externo no puede exceder ${TARIMA_INPUT_LIMITS.OUTER_DIAMETER_MM.max} mm.`);
+  }
+
+  if (innerDiameter > 0 && outerDiameter > 0 && outerDiameter <= innerDiameter) {
+    errors.push('El diámetro externo debe ser mayor al diámetro interno.');
+  }
+
+  if (!isPresent(raw.width) || width < TARIMA_INPUT_LIMITS.WIDTH_MM.min) {
+    errors.push(`El ancho debe ser mayor o igual a ${TARIMA_INPUT_LIMITS.WIDTH_MM.min} mm.`);
+  } else if (width > TARIMA_INPUT_LIMITS.WIDTH_MM.max) {
+    errors.push(`El ancho no puede exceder ${TARIMA_INPUT_LIMITS.WIDTH_MM.max} mm.`);
+  }
+
+  if (isPresent(raw.minimum_shipping_weight)) {
+    if (minimumShippingWeight < TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.min) {
+      errors.push(`El peso mínimo debe ser mayor o igual a ${TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.min} ton.`);
+    } else if (minimumShippingWeight > TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.max) {
+      errors.push(`El peso mínimo no puede exceder ${TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.max} ton.`);
+    }
+  }
+
+  if (!isPresent(raw.maximum_shipping_weight) || maximumShippingWeight < TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.min) {
+    errors.push(`El peso máximo debe ser mayor o igual a ${TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.min} ton.`);
+  } else if (maximumShippingWeight > TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.max) {
+    errors.push(`El peso máximo no puede exceder ${TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.max} ton.`);
+  }
+
+  if (minimumShippingWeight > 0 && maximumShippingWeight > 0 && maximumShippingWeight < minimumShippingWeight) {
+    errors.push('El peso máximo debe ser mayor o igual al peso mínimo.');
+  }
+
+  if (!isPresent(raw.pieces_per_package) || piecesPerPackage < TARIMA_INPUT_LIMITS.PIECES_PER_PACKAGE.min || !Number.isInteger(piecesPerPackage)) {
+    errors.push(`Las piezas por paquete deben ser un entero mayor o igual a ${TARIMA_INPUT_LIMITS.PIECES_PER_PACKAGE.min}.`);
+  } else if (piecesPerPackage > TARIMA_INPUT_LIMITS.PIECES_PER_PACKAGE.max) {
+    errors.push(`Las piezas por paquete no pueden exceder ${TARIMA_INPUT_LIMITS.PIECES_PER_PACKAGE.max}.`);
+  }
+
+  if (isPresent(raw.maximum_pallet_width) && maximumPalletWidth !== 0) {
+    if (maximumPalletWidth < TARIMA_INPUT_LIMITS.MAXIMUM_PALLET_WIDTH_MM.min) {
+      errors.push(`El ancho máximo de tarima debe ser mayor o igual a ${TARIMA_INPUT_LIMITS.MAXIMUM_PALLET_WIDTH_MM.min} mm.`);
+    } else if (maximumPalletWidth > TARIMA_INPUT_LIMITS.MAXIMUM_PALLET_WIDTH_MM.max) {
+      errors.push(`El ancho máximo de tarima no puede exceder ${TARIMA_INPUT_LIMITS.MAXIMUM_PALLET_WIDTH_MM.max} mm.`);
+    }
+  }
+
+  return errors;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -206,10 +287,37 @@ export function computeTarimaValidation(
   raw: RawDbSpec,
   orientation: CoilOrientation
 ): ValidationResult | null {
+  const inputErrors = validateTarimaInputs(raw);
+  if (inputErrors.length > 0) return null;
+
   const spec = normalizeTarimaSpec(raw, orientation);
   if (!spec) return null;
   const simulation = computeLayout(spec);
   return validateTarima(simulation);
+}
+
+export function getTarimaSubmissionGuard(
+  raw: RawDbSpec,
+  orientation: CoilOrientation
+): TarimaSubmissionGuard {
+  const hardErrors = validateTarimaInputs(raw);
+  const validationResult = hardErrors.length > 0 ? null : computeTarimaValidation(raw, orientation);
+
+  if (!validationResult) {
+    return {
+      canSubmit: hardErrors.length === 0,
+      hardErrors,
+      warnings: [],
+      validationResult: null,
+    };
+  }
+
+  return {
+    canSubmit: validationResult.violations.length === 0 && hardErrors.length === 0,
+    hardErrors: [...hardErrors, ...validationResult.violations.map((violation) => violation.message)],
+    warnings: validationResult.warnings.map((warning) => warning.message),
+    validationResult,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

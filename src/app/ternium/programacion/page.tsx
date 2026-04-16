@@ -1,21 +1,24 @@
 'use client';
 
 import { useProgrammingData } from '@/hooks/programacion/useProgrammingData';
-import { FiDownload } from 'react-icons/fi';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
+import { useRouter } from 'next/navigation';
+import type { OrderWithProgramming, ProgramingStatus } from '@/types/programacion';
 
 export default function ProgramacionPage() {
   useRoleGuard('/ternium/programacion');
+  const router = useRouter();
   const {
     orders,
     loading,
     error,
     filters,
     pagination,
+    clientOptions,
+    responsibleOptions,
     updateFilters,
-    updatePage,
-    assignOrder
+    updatePage
   } = useProgrammingData();
 
   const formatDate = (dateString: string | null) => {
@@ -27,12 +30,10 @@ export default function ProgramacionPage() {
     });
   };
 
-  const getResponsibleName = (order: any) => {
-    if (order.worker?.name) {
-      const nameParts = order.worker.name.split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = order.worker.second_name || (nameParts[1] || '');
-      return lastName ? `${firstName} ${lastName}` : firstName;
+  const getResponsibleName = (order: OrderWithProgramming) => {
+    const responsibleUser = order.programing_instruction?.responsible_user;
+    if (responsibleUser?.name) {
+      return `${responsibleUser.name} ${responsibleUser.second_name ?? ''}`.trim();
     }
     return '—';
   };
@@ -83,11 +84,13 @@ export default function ProgramacionPage() {
               <select
                 className="bg-slate-50/80 border border-slate-200 text-slate-600 text-sm rounded-xl focus:ring-2 focus:ring-[#ff4301]/20 focus:border-[#ff4301]/40 block w-full p-2.5 outline-none appearance-none cursor-pointer transition-all"
                 value={filters.assignmentStatus}
-                onChange={(e) => updateFilters({ assignmentStatus: e.target.value as any })}
+                onChange={(e) =>
+                  updateFilters({ assignmentStatus: e.target.value as ProgramingStatus | 'Todos' })
+                }
               >
                 <option value="Todos">Todos</option>
                 <option value="Sin asignar">Sin asignar</option>
-                <option value="Aceptado">Asignado</option>
+                <option value="Asignado">Asignado</option>
                 <option value="Reasignado">Reasignado</option>
               </select>
             </div>
@@ -99,12 +102,11 @@ export default function ProgramacionPage() {
                 value={filters.client}
                 onChange={(e) => updateFilters({ client: e.target.value })}
               >
-                <option value="Todos los clientes">Todos los clientes</option>
-                <option value="Cliente A">Cliente A</option>
-                <option value="Cliente B">Cliente B</option>
-                <option value="Cliente C">Cliente C</option>
-                <option value="Constructora X">Constructora X</option>
-                <option value="Industrial Z">Industrial Z</option>
+                {clientOptions.map((clientName) => (
+                  <option key={clientName} value={clientName}>
+                    {clientName}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -116,9 +118,11 @@ export default function ProgramacionPage() {
                 onChange={(e) => updateFilters({ responsible: e.target.value })}
               >
                 <option value="Cualquiera">Cualquiera</option>
-                <option value="G. Sinchez">G. Sinchez</option>
-                <option value="M. Luna">M. Luna</option>
-                <option value="J. Rodriguez">J. Rodriguez</option>
+                {responsibleOptions.map((responsible) => (
+                  <option key={responsible.id} value={responsible.id}>
+                    {responsible.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -129,13 +133,8 @@ export default function ProgramacionPage() {
             <div className="flex items-center gap-2.5">
               <h2 className="font-bold text-slate-800 text-base">LISTADO DE ÓRDENES</h2>
               <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {orders.length}
+                {pagination.totalItems}
               </span>
-            </div>
-            <div className="flex gap-1 text-slate-400">
-              <button aria-label="Descargar listado" className="hover:text-slate-700 transition-colors p-1.5 hover:bg-slate-100 rounded-lg">
-                <FiDownload size={18} />
-              </button>
             </div>
           </div>
 
@@ -154,48 +153,59 @@ export default function ProgramacionPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {orders.map((order) => (
-                  <tr key={order.id} className="hover:bg-[#fff6f2] transition-colors duration-150 group">
-                    <td className="px-6 py-4 font-bold text-sm text-slate-700">
-                      ORD-{order.id}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-500">
-                      {order.product?.master || 'Producto'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-500">
-                      {order.client?.name || 'Cliente'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-500">
-                      {order.status}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-500">
-                      {getResponsibleName(order)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-400">
-                      {formatDate(order.programing_instruction?.assigned_date || null)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <AssignmentStatusBadge status={order.programing_instruction?.status} />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => window.location.href = `/ternium/programacion/editar/${order.id}`}
-                        className="text-[#ff4301] bg-[#ff4301]/5 border border-[#ff4301]/30 hover:bg-[#ff4301] hover:text-white hover:shadow-[0_4px_12px_rgba(255,67,1,0.3)] px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
-                      >
-                        {order.programing_instruction?.status === 'Sin asignar' ? 'Asignar' : 'Editar'}
-                      </button>
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-12 text-center text-slate-400 text-sm">
+                      No hay órdenes que coincidan con los filtros seleccionados.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  orders.map((order) => (
+                    <tr key={order.id} className="hover:bg-[#fff6f2] transition-colors duration-150 group">
+                      <td className="px-6 py-4 font-bold text-sm text-slate-700">
+                        ORD-{order.id}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {order.product?.master || order.product?.pt || 'Producto'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {order.client?.name || 'Cliente'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {order.status}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500">
+                        {getResponsibleName(order)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-400">
+                        {formatDate(order.programing_instruction?.assigned_date || null)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <AssignmentStatusBadge status={order.programing_instruction?.status} />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => router.push(`/ternium/programacion/editar/${order.id}`)}
+                          className="text-[#ff4301] bg-[#ff4301]/5 border border-[#ff4301]/30 hover:bg-[#ff4301] hover:text-white hover:shadow-[0_4px_12px_rgba(255,67,1,0.3)] px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200"
+                        >
+                          {order.programing_instruction?.status === 'Sin asignar' || !order.programing_instruction?.status ? 'Asignar' : 'Editar'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="p-4 bg-gradient-to-r from-[#fafbfc] to-white flex justify-between items-center border-t border-slate-100">
             <span className="text-xs text-slate-400 font-medium">
-              Mostrando {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1}-
-              {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)}{' '}
-              de {pagination.totalItems} registros
+              {pagination.totalItems === 0
+                ? 'Mostrando 0 de 0 registros'
+                : `Mostrando ${((pagination.currentPage - 1) * pagination.itemsPerPage) + 1}-${Math.min(
+                    pagination.currentPage * pagination.itemsPerPage,
+                    pagination.totalItems
+                  )} de ${pagination.totalItems} registros`}
             </span>
             <div className="flex items-center gap-2">
               <button

@@ -3,10 +3,10 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/context/AuthContext';
-import { isAllowed } from '@/lib/permissions';
+import { getDefaultPathForRole, isAllowed } from '@/lib/permissions';
 
 /**
- * Redirects to /ternium/dashboard if the current user's role is not
+ * Redirects to the current role landing if the current user's role is not
  * allowed to access `protectedPath`.
  *
  * Usage at the top of any protected page component:
@@ -19,7 +19,7 @@ export function useRoleGuard(protectedPath: string): void {
   useEffect(() => {
     if (loading) return;
     if (!isAllowed(user?.role_name, protectedPath)) {
-      router.replace('/ternium/dashboard');
+      router.replace(getDefaultPathForRole(user?.role_name));
     }
   }, [user, loading, protectedPath, router]);
 }

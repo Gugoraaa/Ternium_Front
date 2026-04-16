@@ -4,8 +4,10 @@ import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft, FiCheckCircle, FiXCircle } from 'react-icons/fi';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useManagementDetail } from '@/hooks/management/useManagementDetail';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 export default function ManagementDetailPage() {
+  useRoleGuard('/ternium/management');
   const router = useRouter();
   const params = useParams();
   const orderId = params.slug as string;

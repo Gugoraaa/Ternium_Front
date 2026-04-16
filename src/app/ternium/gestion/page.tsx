@@ -1,6 +1,6 @@
 'use client';
 import {
-  FiSearch, FiDownload, FiPrinter, FiPlus
+  FiSearch, FiPlus
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import { useOrders } from '@/hooks/orders/useOrders';
@@ -97,24 +97,6 @@ export default function DashboardOrdenes() {
                 {filteredOrders.length}
               </span>
             </div>
-            <div className="flex gap-1 text-slate-300">
-              <button
-                aria-label="Descargar órdenes"
-                disabled
-                title="Próximamente"
-                className="cursor-not-allowed p-1.5 rounded-lg opacity-50"
-              >
-                <FiDownload size={18} />
-              </button>
-              <button
-                aria-label="Imprimir órdenes"
-                disabled
-                title="Próximamente"
-                className="cursor-not-allowed p-1.5 rounded-lg opacity-50"
-              >
-                <FiPrinter size={18} />
-              </button>
-            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -143,8 +125,10 @@ export default function DashboardOrdenes() {
                         minute: '2-digit'
                       }) : 'N/A'}
                     </td>
-                    <td className="px-6 py-4 w-fit">
-                      <StatusPill status={order.status || ''} />
+                    <td className="px-6 py-4 text-center align-middle">
+                      <div className="flex justify-center">
+                        <StatusPill status={order.status || ''} />
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button

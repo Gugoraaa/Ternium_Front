@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 import { useRolesAndClients } from '@/hooks/crearusuario/useRolesAndClients';
 import { useCreateUsuarioForm } from '@/hooks/crearusuario/useCreateUsuarioForm';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -9,10 +10,11 @@ import DatosGeneralesSection from '@/components/crearusuario/DatosGeneralesSecti
 import FormActions from '@/components/crearusuario/FormActions';
 
 export default function CrearUsuarioPage() {
+  useRoleGuard('/ternium/usuarios');
   const router = useRouter();
   const { roles, clients, loading } = useRolesAndClients();
-  const { userCategory, setUserCategory, formData, handleInputChange, handleSubmit } =
-    useCreateUsuarioForm();
+  const { userCategory, handleCategoryChange, formData, handleInputChange, handleSubmit } =
+    useCreateUsuarioForm(roles);
 
   if (loading) {
     return <LoadingSpinner size="large" message="Cargando datos del formulario..." fullScreen />;
@@ -32,7 +34,7 @@ export default function CrearUsuarioPage() {
                 roles={roles}
                 clients={clients}
                 onInputChange={handleInputChange}
-                onCategoryChange={setUserCategory}
+                onCategoryChange={handleCategoryChange}
               />
               <FormActions onCancel={() => router.push('/ternium/usuarios')} />
             </div>

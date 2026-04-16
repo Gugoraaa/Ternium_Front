@@ -64,15 +64,15 @@ export default function ManagementPage() {
                   updateFilters({ dispatchStatus: e.target.value as DispatchValidationStatus | 'Todos' })
                 }
               >
+                <option value="Todos">Todos</option>
                 <option value="Pendiente">Pendiente</option>
                 <option value="Aceptado">Aceptado</option>
                 <option value="Rechazado">Rechazado</option>
-                <option value="Todos">Todos</option>
               </select>
             </div>
             <div className="flex items-end">
               <button
-                onClick={() => updateFilters({ dispatchStatus: 'Pendiente' })}
+                onClick={() => updateFilters({ dispatchStatus: 'Todos' })}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2.5 px-4 rounded-xl transition-colors border border-slate-200 hover:border-slate-300 text-sm"
               >
                 Restablecer

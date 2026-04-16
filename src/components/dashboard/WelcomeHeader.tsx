@@ -1,13 +1,16 @@
 'use client';
 
-const roleLabelMap: Record<string, { label: string; color: string }> = {
-  order_manager:     { label: 'Gestión de Órdenes', color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-  scheduler:         { label: 'Programación',        color: 'bg-pink-50 text-pink-700 border-pink-100' },
-  operations_manager:{ label: 'Operaciones',         color: 'bg-blue-50 text-blue-700 border-blue-100' },
-  order_controller:  { label: 'Control de Despacho', color: 'bg-purple-50 text-purple-700 border-purple-100' },
-  client_manager:    { label: 'Gestión de Clientes', color: 'bg-orange-50 text-orange-700 border-orange-100' },
-  user_admin:        { label: 'Administrador',       color: 'bg-slate-100 text-slate-700 border-slate-200' },
-  admin:             { label: 'Super Admin',         color: 'bg-red-50 text-red-700 border-red-100' },
+import { getRoleLabel, normalizeRoleName } from '@/lib/permissions';
+
+const roleColorMap: Record<string, string> = {
+  order_manager: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  scheduler: 'bg-pink-50 text-pink-700 border-pink-100',
+  operations_manager: 'bg-blue-50 text-blue-700 border-blue-100',
+  order_controller: 'bg-purple-50 text-purple-700 border-purple-100',
+  client_manager: 'bg-orange-50 text-orange-700 border-orange-100',
+  user_admin: 'bg-slate-100 text-slate-700 border-slate-200',
+  admin: 'bg-red-50 text-red-700 border-red-100',
+  dispatcher: 'bg-amber-50 text-amber-700 border-amber-100',
 };
 
 function getGreeting(): string {
@@ -32,7 +35,11 @@ interface WelcomeHeaderProps {
 }
 
 export default function WelcomeHeader({ userName, role }: WelcomeHeaderProps) {
-  const roleInfo = roleLabelMap[role] ?? { label: role, color: 'bg-slate-100 text-slate-700 border-slate-200' };
+  const normalizedRole = normalizeRoleName(role);
+  const roleInfo = {
+    label: getRoleLabel(role),
+    color: normalizedRole ? roleColorMap[normalizedRole] ?? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-slate-100 text-slate-700 border-slate-200',
+  };
   const firstName = userName.split(' ')[0];
 
   return (

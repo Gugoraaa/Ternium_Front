@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft } from 'react-icons/fi';
 import toast from 'react-hot-toast';
@@ -8,14 +8,16 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { useOrderById } from '@/hooks/orders/useOrderById';
 import { useWorkers } from '@/hooks/useWorkers';
 import { createClient } from '@/lib/supabase/client';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 export default function EditarProgramacionPage() {
+  useRoleGuard('/ternium/programacion');
   const router = useRouter();
   const params = useParams();
   const orderId = params.slug as string;
   
   const { order, loading: orderLoading, error } = useOrderById(orderId);
-  const { workers, loading: workersLoading } = useWorkers();
+  const { workers, loading: workersLoading, error: workersError } = useWorkers();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     responsible: '',
@@ -23,37 +25,84 @@ export default function EditarProgramacionPage() {
     comment: ''
   });
 
+  useEffect(() => {
+    if (!order) return;
+
+    setFormData({
+      responsible: order.programing_instructions?.responsible ?? '',
+      deadline: order.programing_instructions?.assigned_date ?? '',
+      comment: order.programing_instructions?.note ?? '',
+    });
+  }, [order]);
+
+  const minAssignableDate = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const createdAt = order?.created_at ? new Date(order.created_at).toISOString().split('T')[0] : today;
+    return createdAt > today ? createdAt : today;
+  }, [order?.created_at]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!order) return;
+
+    const selectedWorker = workers.find((worker) => worker.id === formData.responsible);
+    if (!selectedWorker) {
+      toast.error('Selecciona un responsable válido.');
+      return;
+    }
+
+    if (!formData.deadline) {
+      toast.error('Selecciona una fecha de asignación.');
+      return;
+    }
+
+    if (formData.deadline < minAssignableDate) {
+      toast.error('La fecha de asignación no puede ser anterior a hoy ni a la creación de la orden.');
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
       const supabase = createClient();
-      
-      const selectedWorkerName = formData.responsible.trim();
-      const selectedWorker = workers.find(worker => 
-        `${worker.name} ${worker.second_name}` === selectedWorkerName
-      );
-      
-      if (!selectedWorker) {
-        throw new Error('No se encontró el trabajador seleccionado');
+      const instructionPayload = {
+        responsible: selectedWorker.id,
+        assigned_date: formData.deadline,
+        note: formData.comment.trim() || 'No hay nota proporcionada',
+        status: order.programing_instructions?.status === 'Reasignado' ? 'Reasignado' : 'Asignado',
+      };
+
+      let programingInstructionsId = order.programing_instructions?.id ?? null;
+
+      if (programingInstructionsId) {
+        const { error: updateError } = await supabase
+          .from('programing_instructions')
+          .update(instructionPayload)
+          .eq('id', programingInstructionsId);
+
+        if (updateError) throw updateError;
+      } else {
+        const { data: newInstruction, error: createError } = await supabase
+          .from('programing_instructions')
+          .insert(instructionPayload)
+          .select('id')
+          .single();
+
+        if (createError) throw createError;
+        programingInstructionsId = newInstruction.id;
+
+        const { error: linkError } = await supabase
+          .from('orders')
+          .update({ programing_instructions_id: programingInstructionsId })
+          .eq('id', order.id);
+
+        if (linkError) throw linkError;
       }
-
-      const { error: updateError } = await supabase
-        .from('programing_instructions')
-        .update({
-          responsible: selectedWorker.id,
-          assigned_date: formData.deadline,
-          note: formData.comment || 'No hay nota proporcionada',
-          status: 'Asignado'
-        })
-        .eq('id', order!.programing_instructions!.id);
-
-      if (updateError) throw updateError;
 
       toast.success('Asignación guardada correctamente');
       router.push('/ternium/programacion');
-    } catch (error) {
+    } catch (submitError) {
+      console.error('Error saving assignment:', submitError);
       toast.error('Error al guardar la asignación. Intenta nuevamente.');
     } finally {
       setLoading(false);
@@ -74,13 +123,13 @@ export default function EditarProgramacionPage() {
     );
   }
 
-  if (error || !order) {
+  if (error || workersError || !order) {
     return (
       <div className="min-h-screen bg-[#f8fafc] p-6 lg:p-10 font-sans text-slate-700">
         <div className="max-w-4xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-red-800 mb-2">Error</h2>
-            <p className="text-red-600">{error || 'No se encontró la orden especificada'}</p>
+            <p className="text-red-600">{error || workersError || 'No se encontró la orden especificada'}</p>
             <button
               onClick={() => router.push('/ternium/programacion')}
               className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -133,7 +182,7 @@ export default function EditarProgramacionPage() {
             <div>
               <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Estado</p>
               <span className="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                {order?.programing_instructions?.status || 'N/A'}
+                {order?.programing_instructions?.status || 'Sin asignar'}
               </span>
             </div>
           </div>
@@ -156,8 +205,8 @@ export default function EditarProgramacionPage() {
               >
                 <option value="">Seleccionar persona responsable</option>
                 {workers.map((worker) => (
-                  <option key={worker.id} value={`${worker.name} ${worker.second_name}`}>
-                    {worker.name} {worker.second_name}
+                  <option key={worker.id} value={worker.id}>
+                    {worker.name} {worker.second_name ?? ''} {worker.role_name ? `• ${worker.role_name}` : ''}
                   </option>
                 ))}
               </select>
@@ -172,9 +221,13 @@ export default function EditarProgramacionPage() {
                 type="date"
                 value={formData.deadline}
                 onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                min={minAssignableDate}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 transition-all outline-none"
                 required
               />
+              <p className="mt-2 text-xs text-slate-400">
+                Fecha mínima permitida: {new Date(minAssignableDate).toLocaleDateString('es-MX')}
+              </p>
             </div>
 
             {/* Comment */}

@@ -1,20 +1,23 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, createIsolatedClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import type { CreateUserFormData, UserCategory } from '@/types/crearUsuario';
 import { INITIAL_FORM_DATA } from '@/types/crearUsuario';
+import type { Role } from '@/types/crearUsuario';
+import { normalizeRoleName } from '@/lib/permissions';
 
 /**
  * Hook de formulario para la vista "Crear Usuario".
  * Maneja estado, validaciones y envío del formulario.
  */
-export function useCreateUsuarioForm() {
+export function useCreateUsuarioForm(roles: Role[] | null) {
   const [userCategory, setUserCategory] = useState<UserCategory>('employee');
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+  const isolatedSupabase = useMemo(() => createIsolatedClient(), []);
   const [formData, setFormData] = useState<CreateUserFormData>(INITIAL_FORM_DATA);
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -23,10 +26,20 @@ export function useCreateUsuarioForm() {
   }, []);
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    const { name, value } = e.target;
+    const field = e.target.dataset.field ?? e.target.name;
+    const { value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [field]: value,
+    }));
+  }
+
+  function handleCategoryChange(category: UserCategory) {
+    setUserCategory(category);
+    setFormData((prev) => ({
+      ...prev,
+      rol: category === 'employee' ? prev.rol : '',
+      cliente: category === 'external' ? prev.cliente : '',
     }));
   }
 
@@ -56,21 +69,25 @@ export function useCreateUsuarioForm() {
     try {
       toast.loading('Creando usuario...', { id: 'createUser' });
 
-      const { data, error } = await supabase.auth.signUp({
+      const externalRoleId = roles?.find((role) => normalizeRoleName(role.name) === 'client_manager')?.id;
+      if (userCategory === 'external' && !externalRoleId) {
+        throw new Error('No se encontró el rol configurado para clientes');
+      }
+
+      const { data, error } = await isolatedSupabase.auth.signUp({
         email: formData.email,
         password: formData.contraseña,
         options: {
           data: {
             name: formData.nombre,
             second_name: formData.apellido,
-            // Solo enviamos role_id para empleados.
-            // Evita parsear rol cuando el usuario es externo (antes podía quedar NaN).
-            role_id: userCategory === 'employee' ? parseInt(formData.rol, 10) : 2,
+            role_id: userCategory === 'employee' ? parseInt(formData.rol, 10) : externalRoleId,
           },
         },
       });
 
       if (error) throw error;
+      if (!data.user?.id) throw new Error('No se recibió el usuario creado');
 
       if (userCategory === 'external') {
         const { error: clientError } = await supabase.from('client_workers').insert({
@@ -83,24 +100,28 @@ export function useCreateUsuarioForm() {
 
       toast.success('Usuario creado exitosamente', { id: 'createUser' });
       setFormData(INITIAL_FORM_DATA);
+      handleCategoryChange('employee');
 
       redirectTimerRef.current = setTimeout(() => {
         router.push('/ternium/usuarios');
       }, 1500);
-    } catch (error: any) {
-      if (error.message?.includes('User already registered')) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('User already registered')) {
         toast.error('El correo electrónico ya está registrado', { id: 'createUser' });
-      } else if (error.message?.includes('Invalid email')) {
+      } else if (message.includes('Invalid email')) {
         toast.error('El correo electrónico no es válido', { id: 'createUser' });
       } else {
         toast.error('Error al crear usuario. Intenta nuevamente', { id: 'createUser' });
       }
+    } finally {
+      await isolatedSupabase.auth.signOut();
     }
   }
 
   return {
     userCategory,
-    setUserCategory,
+    handleCategoryChange,
     formData,
     handleInputChange,
     handleSubmit,

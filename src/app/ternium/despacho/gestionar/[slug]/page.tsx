@@ -2,11 +2,13 @@
 
 import { useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { FiArrowLeft, FiInfo } from 'react-icons/fi';
+import { FiArrowLeft } from 'react-icons/fi';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useDespachoDetail } from '@/hooks/despacho/useDespachoDetail';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 export default function GestionarDespachoPage() {
+  useRoleGuard('/ternium/despacho');
   const router = useRouter();
   const params = useParams();
   const orderId = params.slug as string;
@@ -67,11 +69,8 @@ export default function GestionarDespachoPage() {
   const ed = order.execution_details;
   const specs = order.specs;
 
-  // Mock data (client-side only, never persisted)
-  const displayTar    = si.tar    ?? `Tar-${String(order.id).padStart(4, '0')}`;
-  const displayPlates = si.plates ?? `PLC-${order.id}X`;
-  const guiaRemision  = `GR-${order.id}-${new Date(order.created_at).getFullYear()}`;
-  const transporte    = 'Transportes del Valle S.A. de C.V.';
+  const displayTar = si.tar ?? '—';
+  const displayPlates = si.plates ?? '—';
 
   // Technical data (real)
   const pesoNeto = ed?.weight ?? specs?.minimum_shipping_weight ?? null;
@@ -116,18 +115,10 @@ export default function GestionarDespachoPage() {
           </div>
         </div>
 
-        {/* Mock data notice */}
-        <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <FiInfo className="text-blue-500 mt-0.5 shrink-0" size={16} />
-          <p className="text-blue-700 text-xs font-medium">
-            Los datos de transporte (empresa, guía de remisión, TAR y placas) son generados visualmente y no se persisten en la base de datos.
-          </p>
-        </div>
-
         {/* Two columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
 
-          {/* Left: Configuración de entrega (mock) */}
+          {/* Left: Configuración de entrega */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-slate-100">
               <h2 className="font-bold text-slate-800 text-sm uppercase tracking-wider">
@@ -135,10 +126,10 @@ export default function GestionarDespachoPage() {
               </h2>
             </div>
             <div className="p-5 flex flex-col gap-3">
-              <InfoRow label="Empresa Transportista" value={transporte} mock />
-              <InfoRow label="Guía de Remisión" value={guiaRemision} mock />
-              <InfoRow label="TAR" value={displayTar} mock={!si.tar} />
-              <InfoRow label="Placas" value={displayPlates} mock={!si.plates} />
+              <InfoRow label="Empresa Transportista" value="—" />
+              <InfoRow label="Guía de Remisión" value="—" />
+              <InfoRow label="TAR" value={displayTar} />
+              <InfoRow label="Placas" value={displayPlates} />
               <InfoRow label="Fecha Salida Programada" value={scheduledDate} />
               <InfoRow label="Producto (PT)" value={order.product?.pt || '—'} />
               <InfoRow label="Master" value={order.product?.master || '—'} />
@@ -203,22 +194,13 @@ export default function GestionarDespachoPage() {
 function InfoRow({
   label,
   value,
-  mock = false,
 }: {
   label: string;
   value: string;
-  mock?: boolean;
 }) {
   return (
     <div className="flex justify-between items-center p-3 rounded-lg bg-[#fbfbfc] border border-slate-50">
-      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-        {label}
-        {mock && (
-          <span className="text-[9px] text-blue-400 font-semibold normal-case tracking-normal">
-            (visual)
-          </span>
-        )}
-      </span>
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
       <span className="text-sm font-bold text-slate-800">{value}</span>
     </div>
   );

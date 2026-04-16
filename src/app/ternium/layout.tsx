@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthorizedServerUser } from '@/lib/server-auth'
 import Sidebar from "@/components/Sidebar";
 import { Toaster } from "react-hot-toast";
 import { SidebarProvider } from '@/context/SidebarContext';
@@ -11,13 +11,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const supabase = await createClient()
+  const authorizedUser = await getAuthorizedServerUser()
 
-  const {
-    data: { user }
-  } = await supabase.auth.getUser()
-
-  if (!user) {
+  if (!authorizedUser) {
     redirect('/login')
   }
 

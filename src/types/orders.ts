@@ -23,6 +23,6 @@ export type OrderDetails = Order & {
     responsible: string | null;
     assigned_date: string | null;
     note: string | null;
-    status: 'Aceptado' | 'Sin asignar' | 'Reasignado' | null;
+    status: 'Asignado' | 'Sin asignar' | 'Reasignado' | null;
   };
 };

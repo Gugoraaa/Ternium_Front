@@ -23,17 +23,13 @@ export default function TarimaScene({ simulation, riskLevel }: TarimaSceneProps)
   const coilColor = getRiskColors(riskLevel).threeHex;
 
   const palletH = C.PALLET_HEIGHT_MM * SCALE;
-
-  // One wooden base per stack.
-  // Vertical: each unique positionX is one column (stack of coils).
-  // Horizontal: each placement is its own stack (single coil per position).
-  const stackXPosMm = isVertical
-    ? [...new Set(placements.map((p) => p.positionX))]
-    : placements.map((p) => p.positionX);
-
-  // Base footprint per stack
-  const baseW = (isVertical ? spec.outerDiameter : spec.width) * SCALE;
-  const baseD = spec.outerDiameter * SCALE;
+  const palletWidthMm = Math.max(
+    isVertical ? simulation.totalWidthMm : spec.maximumPalletWidth || simulation.totalWidthMm,
+    C.PALLET_LENGTH_MM
+  );
+  const palletDepthMm = Math.max(spec.outerDiameter + C.COIL_GAP_MM * 2, C.PALLET_WIDTH_MM);
+  const palletWidth = palletWidthMm * SCALE;
+  const palletDepth = palletDepthMm * SCALE;
 
   return (
     <>
@@ -42,23 +38,30 @@ export default function TarimaScene({ simulation, riskLevel }: TarimaSceneProps)
       <directionalLight position={[5, 10, 5]} intensity={1.2} castShadow />
       <directionalLight position={[-3, 5, -3]} intensity={0.4} />
 
-      {/* Per-stack wooden bases */}
-      {stackXPosMm.map((xMm, i) => (
-        <group key={i} position={[xMm * SCALE, 0, 0]}>
-          {/* Main wooden block */}
-          <mesh position={[0, -palletH / 2, 0]} receiveShadow>
-            <boxGeometry args={[baseW, palletH, baseD]} />
-            <meshStandardMaterial color="#8B6914" roughness={0.85} metalness={0.05} />
-          </mesh>
-          {/* Plank texture lines (decorative) */}
-          {[-0.3, 0, 0.3].map((zOffset) => (
-            <mesh key={zOffset} position={[0, -palletH / 2, zOffset * baseD]} receiveShadow>
-              <boxGeometry args={[baseW, palletH + 0.002, baseD * 0.15]} />
-              <meshStandardMaterial color="#6B4F0F" roughness={0.9} />
-            </mesh>
-          ))}
-        </group>
+      {/* Stable wooden pallet base */}
+      <mesh position={[0, -palletH / 2, 0]} receiveShadow>
+        <boxGeometry args={[palletWidth, palletH, palletDepth]} />
+        <meshStandardMaterial color="#8B6914" roughness={0.85} metalness={0.05} />
+      </mesh>
+
+      {/* Plank texture lines (decorative) */}
+      {[-0.35, 0, 0.35].map((zOffset) => (
+        <mesh key={zOffset} position={[0, -palletH / 2, zOffset * palletDepth]} receiveShadow>
+          <boxGeometry args={[palletWidth, palletH + 0.002, palletDepth * 0.12]} />
+          <meshStandardMaterial color="#6B4F0F" roughness={0.9} />
+        </mesh>
       ))}
+
+      {/* Saddles for horizontal coils */}
+      {!isVertical &&
+        placements.map((placement) => (
+          <group key={`saddle-${placement.index}`} position={[placement.positionX * SCALE, 0, 0]}>
+            <mesh position={[0, C.SADDLE_HEIGHT_MM * SCALE / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[spec.width * SCALE, C.SADDLE_HEIGHT_MM * SCALE, C.SADDLE_WIDTH_MM * SCALE]} />
+              <meshStandardMaterial color="#7C5A12" roughness={0.95} metalness={0.02} />
+            </mesh>
+          </group>
+        ))}
 
       {/* Coils */}
       {placements.map((placement) =>

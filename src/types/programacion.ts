@@ -4,6 +4,19 @@ export type ProgramingInstruction = Database['public']['Tables']['programing_ins
 export type ProgramingStatus = Database['public']['Enums']['programing-status-enum'];
 export type OrderStatus = Database['public']['Enums']['order-status-enum'];
 
+export interface ProgrammingResponsibleUser {
+  id: string;
+  name: string;
+  second_name: string | null;
+  email: string;
+  active: boolean;
+  offboarded_at: string | null;
+}
+
+export interface ProgrammingInstructionWithResponsible extends ProgramingInstruction {
+  responsible_user?: ProgrammingResponsibleUser | null;
+}
+
 export type OrderWithProgramming = {
   id: number;
   product_id: number;
@@ -31,7 +44,7 @@ export type OrderWithProgramming = {
     id: string;
     name: string;
   };
-  programing_instruction?: ProgramingInstruction;
+  programing_instruction?: ProgrammingInstructionWithResponsible | null;
   worker?: {
     id: string;
     name: string;

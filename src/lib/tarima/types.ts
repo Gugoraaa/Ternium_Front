@@ -64,6 +64,14 @@ export interface ValidationResult {
   simulation: SimulationResult;
 }
 
+/** Result used by forms/actions to decide if submit must be blocked */
+export interface TarimaSubmissionGuard {
+  canSubmit: boolean;
+  hardErrors: string[];
+  warnings: string[];
+  validationResult: ValidationResult | null;
+}
+
 /** Raw spec shape from DB — handles type inconsistencies between tables */
 export interface RawDbSpec {
   inner_diameter?: number | string | null;

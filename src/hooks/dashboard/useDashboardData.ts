@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from '@/context/AuthContext';
+import { normalizeRoleName } from '@/lib/permissions';
 
 export interface DashboardKpi {
   label: string;
@@ -44,6 +45,60 @@ export interface DashboardData {
   loading: boolean;
 }
 
+interface DashboardUserRow {
+  name: string;
+  second_name: string;
+}
+
+interface OrderSummaryRow {
+  id: number;
+  status: string | null;
+  created_at: string;
+  product: { pt: string | null } | Array<{ pt: string | null }> | null;
+  client: { name: string | null } | Array<{ name: string | null }> | null;
+  programing_instructions?:
+    | { status: string | null; assigned_date: string | null }
+    | Array<{ status: string | null; assigned_date: string | null }>
+    | null;
+  execution_details?: { status: string | null } | Array<{ status: string | null }> | null;
+  dispatch_validation?: { status: string | null } | Array<{ status: string | null }> | null;
+}
+
+interface ClientWorkerRow {
+  client_id: string;
+}
+
+function mapRecentOrders(
+  rows: OrderSummaryRow[],
+  detailBuilder: (id: number) => string,
+  getStatus: (row: OrderSummaryRow) => string = (row) => row.status ?? 'Pendiente'
+): RecentOrder[] {
+  const getSingle = <T,>(value: T | T[] | null | undefined): T | null => {
+    if (Array.isArray(value)) return value[0] ?? null;
+    return value ?? null;
+  };
+
+  return rows.map((row) => ({
+    id: row.id,
+    producto: getSingle(row.product)?.pt ?? '—',
+    cliente: getSingle(row.client)?.name ?? '—',
+    fecha: row.created_at,
+    status: getStatus(row),
+    detailLink: detailBuilder(row.id),
+  }));
+}
+
+function getNestedStatus(
+  value:
+    | { status: string | null }
+    | Array<{ status: string | null }>
+    | null
+    | undefined
+): string | null {
+  if (Array.isArray(value)) return value[0]?.status ?? null;
+  return value?.status ?? null;
+}
+
 export function useDashboardData(): DashboardData {
   const { user, loading: authLoading } = useUser();
   const [data, setData] = useState<Omit<DashboardData, 'loading'>>({
@@ -63,7 +118,7 @@ export function useDashboardData(): DashboardData {
       return;
     }
 
-    const role = user.role_name ?? '';
+    const role = normalizeRoleName(user.role_name);
 
     async function fetchAll() {
       try {
@@ -81,7 +136,7 @@ export function useDashboardData(): DashboardData {
           .from('users')
           .select('name, second_name')
           .eq('id', user!.id)
-          .single();
+          .single<DashboardUserRow>();
 
         const userName = userData
           ? `${userData.name} ${userData.second_name}`.trim()
@@ -93,7 +148,48 @@ export function useDashboardData(): DashboardData {
         let quickActions: QuickAction[] = [];
 
         // ── order_manager ────────────────────────────────────────────
-        if (role === 'order_manager' || role === 'admin') {
+        if (role === 'admin') {
+          const [usuariosActivosRes, clientesRes, ordenesTotalRes, despachosPendientesRes, recentRes] =
+            await Promise.all([
+              supabase.from('users').select('*', { count: 'exact', head: true }).eq('active', true),
+              supabase.from('clients').select('*', { count: 'exact', head: true }),
+              supabase.from('orders').select('*', { count: 'exact', head: true }),
+              supabase.from('dispatch_validation').select('*', { count: 'exact', head: true }).eq('status', 'Pendiente'),
+              supabase.from('orders')
+                .select('id, status, created_at, product:product_id(pt), client:client_id(name)')
+                .order('created_at', { ascending: false })
+                .limit(5),
+            ]);
+
+          kpis = [
+            { label: 'Usuarios activos', value: usuariosActivosRes.count ?? 0, sublabel: 'Acceso vigente', color: 'blue' },
+            { label: 'Clientes registrados', value: clientesRes.count ?? 0, sublabel: 'Base disponible', color: 'slate' },
+            { label: 'Ordenes totales', value: ordenesTotalRes.count ?? 0, sublabel: 'En la plataforma', color: 'emerald' },
+            { label: 'Despachos pendientes', value: despachosPendientesRes.count ?? 0, sublabel: 'Por validar', color: 'orange', alert: (despachosPendientesRes.count ?? 0) > 0 },
+          ];
+
+          if ((despachosPendientesRes.count ?? 0) > 0) {
+            alerts.push({
+              type: 'warning',
+              message: `${despachosPendientesRes.count} ${despachosPendientesRes.count === 1 ? 'despacho pendiente' : 'despachos pendientes'} de validacion`,
+              count: despachosPendientesRes.count ?? 0,
+              link: '/ternium/management',
+            });
+          }
+
+          recentOrders = mapRecentOrders(
+            (recentRes.data ?? []) as OrderSummaryRow[],
+            (id) => `/ternium/gestion/orden/${id}`
+          );
+
+          quickActions = [
+            { label: 'Gestionar usuarios', description: 'Administrar accesos y roles', link: '/ternium/usuarios', iconKey: 'users' },
+            { label: 'Ver clientes', description: 'Revisar cartera y ordenes', link: '/ternium/clientes', iconKey: 'briefcase' },
+            { label: 'Supervisar gestion', description: 'Monitorear el flujo operativo', link: '/ternium/gestion', iconKey: 'clipboard' },
+          ];
+
+        // ── order_manager ────────────────────────────────────────────
+        } else if (role === 'order_manager') {
           const [pendingRes, acceptedWeekRes, contraOfferRes, monthRes, recentRes, rejectedOldRes] =
             await Promise.all([
               supabase.from('orders').select('*', { count: 'exact', head: true })
@@ -118,7 +214,7 @@ export function useDashboardData(): DashboardData {
           kpis = [
             { label: 'Pendientes de revisión', value: pendingRes.count ?? 0, sublabel: 'Revisión Operador', color: 'orange', alert: (pendingRes.count ?? 0) > 0 },
             { label: 'Aceptadas esta semana', value: acceptedWeekRes.count ?? 0, sublabel: 'Desde el lunes', color: 'emerald' },
-            { label: 'Contraoffertas activas', value: contraOfferRes.count ?? 0, sublabel: 'Sin responder', color: 'blue', alert: (contraOfferRes.count ?? 0) > 0 },
+            { label: 'Contraofertas activas', value: contraOfferRes.count ?? 0, sublabel: 'Sin responder', color: 'blue', alert: (contraOfferRes.count ?? 0) > 0 },
             { label: 'Órdenes este mes', value: monthRes.count ?? 0, sublabel: 'Total generadas', color: 'slate' },
           ];
 
@@ -139,14 +235,10 @@ export function useDashboardData(): DashboardData {
             });
           }
 
-          recentOrders = (recentRes.data ?? []).map((o: any) => ({
-            id: o.id,
-            producto: o.product?.pt ?? '—',
-            cliente: o.client?.name ?? '—',
-            fecha: o.created_at,
-            status: o.status,
-            detailLink: `/ternium/gestion/orden/${o.id}`,
-          }));
+          recentOrders = mapRecentOrders(
+            (recentRes.data ?? []) as OrderSummaryRow[],
+            (id) => `/ternium/gestion/orden/${id}`
+          );
 
           quickActions = [
             { label: 'Revisar pendientes', description: 'Ver órdenes en revisión', link: '/ternium/gestion', iconKey: 'clipboard' },
@@ -189,14 +281,11 @@ export function useDashboardData(): DashboardData {
             });
           }
 
-          recentOrders = (recentRes.data ?? []).map((o: any) => ({
-            id: o.id,
-            producto: o.product?.pt ?? '—',
-            cliente: o.client?.name ?? '—',
-            fecha: o.created_at,
-            status: o.programing_instructions?.status ?? 'Sin asignar',
-            detailLink: `/ternium/programacion/editar/${o.id}`,
-          }));
+          recentOrders = mapRecentOrders(
+            (recentRes.data ?? []) as OrderSummaryRow[],
+            (id) => `/ternium/programacion/editar/${id}`,
+            (row) => getNestedStatus(row.programing_instructions) ?? 'Sin asignar'
+          );
 
           quickActions = [
             { label: 'Ver programación', description: 'Gestionar asignaciones', link: '/ternium/programacion', iconKey: 'calendar' },
@@ -237,14 +326,11 @@ export function useDashboardData(): DashboardData {
             });
           }
 
-          recentOrders = (recentRes.data ?? []).map((o: any) => ({
-            id: o.id,
-            producto: o.product?.pt ?? '—',
-            cliente: o.client?.name ?? '—',
-            fecha: o.created_at,
-            status: o.execution_details?.status ?? 'Pendiente',
-            detailLink: `/ternium/operaciones/orden/${o.id}`,
-          }));
+          recentOrders = mapRecentOrders(
+            (recentRes.data ?? []) as OrderSummaryRow[],
+            (id) => `/ternium/operaciones/orden/${id}`,
+            (row) => getNestedStatus(row.execution_details) ?? 'Pendiente'
+          );
 
           quickActions = [
             { label: 'Ver operaciones', description: 'Órdenes en ejecución', link: '/ternium/operaciones', iconKey: 'wrench' },
@@ -288,14 +374,11 @@ export function useDashboardData(): DashboardData {
             });
           }
 
-          recentOrders = (recentRes.data ?? []).map((o: any) => ({
-            id: o.id,
-            producto: o.product?.pt ?? '—',
-            cliente: o.client?.name ?? '—',
-            fecha: o.created_at,
-            status: o.dispatch_validation?.status ?? 'Pendiente',
-            detailLink: `/ternium/management/orden/${o.id}`,
-          }));
+          recentOrders = mapRecentOrders(
+            (recentRes.data ?? []) as OrderSummaryRow[],
+            (id) => `/ternium/management/orden/${id}`,
+            (row) => getNestedStatus(row.dispatch_validation) ?? 'Pendiente'
+          );
 
           quickActions = [
             { label: 'Validar despachos', description: 'Revisar órdenes listas', link: '/ternium/management', iconKey: 'checkCircle' },
@@ -308,7 +391,7 @@ export function useDashboardData(): DashboardData {
             .select('client_id')
             .eq('user_id', user!.id);
 
-          const clientIds = (cwData ?? []).map((r: any) => r.client_id);
+          const clientIds = ((cwData ?? []) as ClientWorkerRow[]).map((row) => row.client_id);
 
           if (clientIds.length > 0) {
             const [activasRes, revisionRes, completadasRes, recentRes] = await Promise.all([
@@ -335,14 +418,17 @@ export function useDashboardData(): DashboardData {
               { label: 'Completadas', value: completadasRes.count ?? 0, sublabel: 'Total enviadas', color: 'emerald' },
             ];
 
-            recentOrders = (recentRes.data ?? []).map((o: any) => ({
-              id: o.id,
-              producto: o.product?.pt ?? '—',
-              cliente: o.client?.name ?? '—',
-              fecha: o.created_at,
-              status: o.status,
-              detailLink: `/ternium/clientes/orden/${o.id}`,
-            }));
+            recentOrders = mapRecentOrders(
+              (recentRes.data ?? []) as OrderSummaryRow[],
+              (id) => `/ternium/clientes/orden/${id}`
+            );
+          } else {
+            alerts.push({
+              type: 'warning',
+              message: 'Tu cuenta no tiene un cliente asignado todavia',
+              count: 0,
+              link: '/ternium/clientes',
+            });
           }
 
           quickActions = [
@@ -351,33 +437,20 @@ export function useDashboardData(): DashboardData {
 
         // ── user_admin ───────────────────────────────────────────────
         } else if (role === 'user_admin') {
-          const [usuariosActivosRes, ordenesTotalRes, pendienteRevisionRes, nuevosUsuariosMesRes, recentRes] =
+          const [usuariosActivosRes, usuariosInactivosRes, usuariosBajaRes, nuevosUsuariosMesRes] =
             await Promise.all([
               supabase.from('users').select('*', { count: 'exact', head: true }).eq('active', true),
-              supabase.from('orders').select('*', { count: 'exact', head: true }),
-              supabase.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'Revision Operador'),
+              supabase.from('users').select('*', { count: 'exact', head: true }).eq('active', false).is('offboarded_at', null),
+              supabase.from('users').select('*', { count: 'exact', head: true }).not('offboarded_at', 'is', null),
               supabase.from('users').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth),
-              supabase.from('orders')
-                .select('id, status, created_at, product:product_id(pt), client:client_id(name)')
-                .order('created_at', { ascending: false })
-                .limit(5),
             ]);
 
           kpis = [
             { label: 'Usuarios activos', value: usuariosActivosRes.count ?? 0, sublabel: 'En el sistema', color: 'blue' },
-            { label: 'Total de órdenes', value: ordenesTotalRes.count ?? 0, sublabel: 'En la plataforma', color: 'slate' },
-            { label: 'Pendientes de revisión', value: pendienteRevisionRes.count ?? 0, sublabel: 'Sin atender', color: 'orange', alert: (pendienteRevisionRes.count ?? 0) > 0 },
+            { label: 'Usuarios inactivos', value: usuariosInactivosRes.count ?? 0, sublabel: 'Desactivados temporalmente', color: 'orange', alert: (usuariosInactivosRes.count ?? 0) > 0 },
+            { label: 'Usuarios de baja', value: usuariosBajaRes.count ?? 0, sublabel: 'Sin acceso al portal', color: 'red' },
             { label: 'Nuevos usuarios (mes)', value: nuevosUsuariosMesRes.count ?? 0, sublabel: 'Este mes', color: 'emerald' },
           ];
-
-          recentOrders = (recentRes.data ?? []).map((o: any) => ({
-            id: o.id,
-            producto: o.product?.pt ?? '—',
-            cliente: o.client?.name ?? '—',
-            fecha: o.created_at,
-            status: o.status,
-            detailLink: `/ternium/gestion/orden/${o.id}`,
-          }));
 
           quickActions = [
             { label: 'Gestionar usuarios', description: 'Ver y administrar cuentas', link: '/ternium/usuarios', iconKey: 'users' },
@@ -392,7 +465,7 @@ export function useDashboardData(): DashboardData {
     }
 
     fetchAll();
-  }, [user, authLoading]);
+  }, [user, authLoading, supabase]);
 
   return { ...data, loading };
 }

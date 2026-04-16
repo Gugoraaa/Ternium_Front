@@ -5,11 +5,13 @@ import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft, FiCheckCircle, FiTruck } from 'react-icons/fi';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useDespachoDetail } from '@/hooks/despacho/useDespachoDetail';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 
 // Load map with SSR disabled — Leaflet requires window
 const DespachoMap = dynamic(() => import('@/components/despacho/DespachoMap'), { ssr: false });
 
 export default function OrdenDespachoPage() {
+  useRoleGuard('/ternium/despacho');
   const router = useRouter();
   const params = useParams();
   const orderId = params.slug as string;
@@ -48,10 +50,8 @@ export default function OrdenDespachoPage() {
   const isDelivered = si?.status === 'Entregado';
   const isPending   = si?.status === 'Pendiente';
 
-  // Mock data (client-side only)
-  const displayTar    = si?.tar    ?? `Tar-${String(order.id).padStart(4, '0')}`;
-  const displayPlates = si?.plates ?? `PLC-${order.id}X`;
-  const transporte    = 'Transportes del Valle S.A. de C.V.';
+  const displayTar = si?.tar ?? '—';
+  const displayPlates = si?.plates ?? '—';
 
   const approvedAt = order.dispatch_validation?.approved_at
     ? new Date(order.dispatch_validation.approved_at).toLocaleDateString('es-MX', {
@@ -128,7 +128,7 @@ export default function OrdenDespachoPage() {
               <InfoCard label="Cliente" value={order.client?.name || '—'} />
               <InfoCard label="Producto (PT)" value={order.product?.pt || '—'} />
               <InfoCard label="Master" value={order.product?.master || '—'} />
-              <InfoCard label="Empresa Transportista" value={transporte} />
+              <InfoCard label="Empresa Transportista" value="—" />
               <InfoCard label="TAR" value={displayTar} />
               <InfoCard label="Placas" value={displayPlates} />
             </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useMemo } from 'react';
 import { useTarimaSimulation } from '@/hooks/tarima/useTarimaSimulation';
 import { getRiskColors } from '@/lib/tarima/validations';
 import TarimaRiskBadge from './TarimaRiskBadge';
@@ -32,7 +31,7 @@ export default function TarimaPanel({
   label,
   compact = false,
 }: TarimaPanelProps) {
-  const { validationResult, isIncomplete } = useTarimaSimulation({ spec, orientation });
+  const { validationResult, isIncomplete, inputErrors } = useTarimaSimulation({ spec, orientation });
 
   if (isIncomplete || !validationResult) {
     return (
@@ -42,12 +41,27 @@ export default function TarimaPanel({
             {label}
           </h3>
         )}
-        <div className="h-[280px] bg-slate-50 rounded-xl flex flex-col items-center justify-center gap-2">
-          <span className="text-2xl">📦</span>
-          <p className="text-sm text-slate-400 font-medium">
-            Completa las especificaciones para ver la simulación
-          </p>
-        </div>
+        {inputErrors.length > 0 ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-5">
+            <p className="text-xs font-black uppercase tracking-widest text-red-700 mb-3">
+              Corrige la especificación para continuar
+            </p>
+            <ul className="space-y-2">
+              {inputErrors.map((error) => (
+                <li key={error} className="text-sm text-red-700">
+                  • {error}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="h-[280px] bg-slate-50 rounded-xl flex flex-col items-center justify-center gap-2">
+            <span className="text-2xl">📦</span>
+            <p className="text-sm text-slate-400 font-medium">
+              Completa las especificaciones para ver la simulación
+            </p>
+          </div>
+        )}
       </div>
     );
   }

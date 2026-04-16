@@ -80,6 +80,7 @@ export function useDespachoOrders() {
 
   useEffect(() => {
     fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, pagination.currentPage]);
 
   const updateFilters = (newFilters: Partial<DespachoFilters>) => {

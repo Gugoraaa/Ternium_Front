@@ -31,14 +31,6 @@ interface Order {
   };
 }
 
-interface ClientWorker {
-  id: string;
-  user_id: string;
-  client_id: string;
-  role: string;
-  created_at: string;
-}
-
 const SeguimientoOrdenes = () => {
   useRoleGuard('/ternium/clientes');
   const { user: authUser } = useUser();
@@ -52,6 +44,7 @@ const SeguimientoOrdenes = () => {
   useEffect(() => {
     if (authUser === null) return;
     fetchClientOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser]);
 
   async function fetchClientOrders() {
@@ -83,13 +76,18 @@ const SeguimientoOrdenes = () => {
         return;
       }
 
-      const { data: clientWorker, error: workerError } = await supabase
+      const { data: clientWorkers, error: workerError } = await supabase
         .from('client_workers')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+        .select('client_id')
+        .eq('user_id', user.id);
 
       if (workerError) throw workerError;
+      if (!clientWorkers || clientWorkers.length === 0) {
+        setOrders([]);
+        return;
+      }
+
+      const clientIds = [...new Set(clientWorkers.map((worker) => worker.client_id).filter(Boolean))];
 
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
@@ -98,7 +96,7 @@ const SeguimientoOrdenes = () => {
           product:product_id (*),
           client:client_id (*)
         `)
-        .eq('client_id', clientWorker.client_id)
+        .in('client_id', clientIds)
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
@@ -119,8 +117,8 @@ const SeguimientoOrdenes = () => {
     order.client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pendingCount = orders.filter(order => order.status === 'pending').length;
-  const reviewCount = orders.filter(order => order.status === 'client_review').length;
+  const pendingCount = orders.filter(order => order.status === 'Revision Cliente').length;
+  const reviewCount = orders.filter(order => order.status === 'Revision Operador').length;
 
   if (loading) {
     return (

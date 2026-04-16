@@ -9,7 +9,7 @@ export function useManagementOrders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ManagementFilters>({
-    dispatchStatus: 'Pendiente',
+    dispatchStatus: 'Todos',
   });
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
@@ -79,6 +79,7 @@ export function useManagementOrders() {
 
   useEffect(() => {
     fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, pagination.currentPage]);
 
   const updateFilters = (newFilters: Partial<ManagementFilters>) => {

@@ -1,6 +1,7 @@
 import { IoChevronDown } from 'react-icons/io5';
 import { FaRegAddressCard, FaRegBuilding, FaGlobeAmericas } from 'react-icons/fa';
 import type { Client, CreateUserFormData, Role, UserCategory } from '@/types/crearUsuario';
+import { getRoleLabel, getUserCategoryForRole } from '@/lib/permissions';
 
 interface DatosGeneralesSectionProps {
   formData: CreateUserFormData;
@@ -23,6 +24,8 @@ export default function DatosGeneralesSection({
   onInputChange,
   onCategoryChange,
 }: DatosGeneralesSectionProps) {
+  const employeeRoles = (roles ?? []).filter((role) => getUserCategoryForRole(role.name) !== 'external');
+
   return (
     <section>
       <div className="flex items-center gap-3 text-[#ff3d00] mb-8">
@@ -35,9 +38,11 @@ export default function DatosGeneralesSection({
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nombre</label>
           <input
             type="text"
-            name="nombre"
+            name="new-user-first-name"
+            data-field="nombre"
             value={formData.nombre}
             onChange={onInputChange}
+            autoComplete="off"
             placeholder="Ej: Juan"
             className="w-full p-4 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300 shadow-sm"
           />
@@ -48,9 +53,11 @@ export default function DatosGeneralesSection({
           </label>
           <input
             type="text"
-            name="apellido"
+            name="new-user-last-name"
+            data-field="apellido"
             value={formData.apellido}
             onChange={onInputChange}
+            autoComplete="off"
             placeholder="Ej: Pérez Maldonado"
             className="w-full p-4 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300 shadow-sm"
           />
@@ -63,9 +70,12 @@ export default function DatosGeneralesSection({
         </label>
         <input
           type="email"
-          name="email"
+          name="new-user-email"
+          data-field="email"
           value={formData.email}
           onChange={onInputChange}
+          autoComplete="off"
+          autoCapitalize="none"
           placeholder="usuario@ternium.com"
           className="w-full p-4 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300 shadow-sm"
         />
@@ -77,9 +87,11 @@ export default function DatosGeneralesSection({
         </label>
         <input
           type="password"
-          name="contraseña"
+          name="new-user-password"
+          data-field="contraseña"
           value={formData.contraseña}
           onChange={onInputChange}
+          autoComplete="new-password"
           placeholder="Contraseña"
           className="w-full p-4 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300 shadow-sm"
         />
@@ -171,21 +183,28 @@ export default function DatosGeneralesSection({
         <div className="relative flex-1">
           <select
             name={userCategory === 'employee' ? 'rol' : 'cliente'}
+            data-field={userCategory === 'employee' ? 'rol' : 'cliente'}
             value={userCategory === 'employee' ? formData.rol : formData.cliente}
             onChange={onInputChange}
             className="w-full appearance-none p-3 px-4 border border-gray-200 rounded-lg bg-white text-slate-500 focus:ring-2 focus:ring-orange-500/20 outline-none font-medium"
           >
             {userCategory === 'employee'
-              ? roles?.map((role) => (
+              ? [
+                  <option key="empty-role" value="">Selecciona un rol</option>,
+                  ...employeeRoles.map((role) => (
                   <option key={role.id} value={role.id}>
-                    {role.name}
+                    {getRoleLabel(role.name)}
                   </option>
-                ))
-              : clients?.map((client) => (
+                  )),
+                ]
+              : [
+                  <option key="empty-client" value="">Selecciona un cliente</option>,
+                  ...(clients?.map((client) => (
                   <option key={client.id} value={client.id}>
                     {client.name}
                   </option>
-                ))}
+                  )) ?? []),
+                ]}
           </select>
           <IoChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>

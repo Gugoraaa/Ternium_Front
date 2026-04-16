@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { computeTarimaValidation } from '@/lib/tarima/validations';
+import { computeTarimaValidation, validateTarimaInputs } from '@/lib/tarima/validations';
 import type { CoilOrientation, ValidationResult, RawDbSpec } from '@/lib/tarima/types';
 
 interface UseTarimaSimulationOptions {
@@ -13,6 +13,7 @@ interface UseTarimaSimulationReturn {
   validationResult: ValidationResult | null;
   /** True when spec is missing required fields for simulation */
   isIncomplete: boolean;
+  inputErrors: string[];
 }
 
 /**
@@ -23,13 +24,19 @@ export function useTarimaSimulation({
   spec,
   orientation,
 }: UseTarimaSimulationOptions): UseTarimaSimulationReturn {
+  const inputErrors = useMemo(() => {
+    if (!spec) return [];
+    return validateTarimaInputs(spec);
+  }, [spec]);
+
   const validationResult = useMemo(() => {
-    if (!spec || !orientation) return null;
+    if (!spec || !orientation || inputErrors.length > 0) return null;
     return computeTarimaValidation(spec, orientation);
-  }, [spec, orientation]);
+  }, [spec, orientation, inputErrors]);
 
   return {
     validationResult,
     isIncomplete: validationResult === null,
+    inputErrors,
   };
 }

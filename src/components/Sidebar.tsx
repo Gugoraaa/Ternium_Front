@@ -3,18 +3,17 @@
 import { MdOutlineDashboard, MdLogout } from "react-icons/md";
 import { FiUsers } from "react-icons/fi";
 import { FaTruck, FaBriefcase, FaTrophy } from "react-icons/fa";
-import { HiOutlineChartSquareBar, HiUser } from "react-icons/hi";
+import { HiOutlineChartSquareBar } from "react-icons/hi";
 import { GiCargoCrane } from "react-icons/gi";
 import { FaGear } from "react-icons/fa6";
 import { LuPackageOpen } from "react-icons/lu";
 import { RiMenu2Fill } from "react-icons/ri";
 
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
 import { useUser } from '@/context/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { useSidebar } from '@/context/SidebarContext';
-import { isAllowed } from '@/lib/permissions';
+import { getRoleLabel, isAllowed } from '@/lib/permissions';
 
 interface MenuItem {
   name: string;
@@ -44,7 +43,6 @@ const menuItems: MenuItem[] = [
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
   const { user, loading } = useUser();
   const supabase = createClient();
   const { isCollapsed, toggleSidebar } = useSidebar();
@@ -57,10 +55,6 @@ export default function Sidebar() {
       console.error('Error al cerrar sesión:', error);
     }
   };
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   return (
     <aside className={`
@@ -110,9 +104,7 @@ export default function Sidebar() {
               {/* Section Items */}
               <div className="flex flex-col gap-[2px]">
                 {items.map((item) => {
-                  const isActive = mounted
-                    ? (pathname === item.path || pathname.startsWith(`${item.path}/`))
-                    : false;
+                  const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
 
                   return (
                     <button
@@ -186,7 +178,7 @@ export default function Sidebar() {
                       {user?.user_metadata?.name}
                     </span>
                     <span className="text-[10px] font-medium uppercase text-[rgba(255,255,255,0.3)] mt-1">
-                      {user?.role_name}
+                      {getRoleLabel(user?.role_name)}
                     </span>
                   </>
                 )}

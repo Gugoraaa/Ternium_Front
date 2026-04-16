@@ -34,7 +34,7 @@ export default function LoginForm() {
       if (error) {
         setError("Credenciales incorrectas. Por favor, inténtalo de nuevo.");
       } else {
-        router.push("/ternium/dashboard");
+        router.push("/ternium");
       }
     } catch {
       setError("Error al iniciar sesión. Por favor, inténtalo de nuevo.");

@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import {
   HiOutlineClipboardList,
-  HiOutlineSparkles,
   HiOutlineExclamationCircle,
   HiOutlineMailOpen,
   HiOutlineTrendingUp,
@@ -17,8 +16,10 @@ import AcceptOrderButton from '@/components/AcceptOrderButton';
 import StatusPill from '@/components/StatusPill';
 import TarimaLoadingFallback from '@/components/tarima/TarimaLoadingFallback';
 import { useUser } from '@/context/AuthContext';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
+import { getTarimaSubmissionGuard, TARIMA_INPUT_LIMITS } from '@/lib/tarima/validations';
 import toast from 'react-hot-toast';
-import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
+import type { OrderSpecs,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
 import type { CoilOrientation } from '@/lib/tarima/types';
 
 const TarimaPanel = dynamic(() => import('@/components/tarima/TarimaPanel'), {
@@ -30,6 +31,7 @@ const TarimaPanel = dynamic(() => import('@/components/tarima/TarimaPanel'), {
 
 
 export default function DetalleEdicionOrden() {
+    useRoleGuard('/ternium/clientes');
     const { user } = useUser();
     const params = useParams();
     const router = useRouter();
@@ -45,6 +47,7 @@ export default function DetalleEdicionOrden() {
 
     useEffect(() => {
         fetchOrderDetails();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [params.slug]);
 
     useEffect(() => {
@@ -52,6 +55,7 @@ export default function DetalleEdicionOrden() {
 
         const sourceOrientation = (orderOffer?.specs?.coil_orientation ?? order.specs?.coil_orientation ?? 'vertical') as CoilOrientation;
         setCoilOrientation(sourceOrientation);
+        setClientNote(orderOffer?.note ?? '');
 
         if (orderOffer?.specs) {
             setEditedSpecs(orderOffer.specs);
@@ -98,7 +102,7 @@ export default function DetalleEdicionOrden() {
                     .from('order_offers')
                     .select(`
                         *,
-                        specs:order_offers_specs (*)
+                        specs:new_specs_id (*)
                     `)
                     .eq('order_id', params.slug)
                     .single();
@@ -125,6 +129,8 @@ export default function DetalleEdicionOrden() {
 
     function resetToOriginalSpecs() {
         if (!order?.specs) return;
+        const originalOrientation = (order.specs.coil_orientation ?? 'vertical') as CoilOrientation;
+        setCoilOrientation(originalOrientation);
         setEditedSpecs({
             id: order.specs.id,
             product_id: order.specs.product_id,
@@ -136,20 +142,52 @@ export default function DetalleEdicionOrden() {
             pieces_per_package: order.specs.pieces_per_package,
             maximum_pallet_width: order.specs.maximum_pallet_width,
             shipping_packaging: order.specs.shipping_packaging,
+            coil_orientation: originalOrientation,
         });
     }
 
-    function formatValue(value: any, unit: string = '') {
+    function formatValue(value: unknown, unit: string = '') {
         return value !== undefined && value !== null ? `${value}${unit}` : 'N/A';
     }
 
-    function getInputValue(value: any) {
+    function getInputValue(value: unknown) {
         return value !== undefined && value !== null ? value : '';
     }
 
-    function isFieldModified(originalValue: any, newValue?: any) {
+    function isFieldModified(originalValue: unknown, newValue?: unknown) {
         return newValue !== undefined && newValue !== null && originalValue !== newValue;
     }
+
+    const currentEditedSpec = useMemo(() => {
+        if (!order?.specs) return null;
+
+        return {
+            ...order.specs,
+            ...(editedSpecs ?? {}),
+            coil_orientation: coilOrientation,
+        };
+    }, [coilOrientation, editedSpecs, order?.specs]);
+
+    const hasSpecChanges = useMemo(() => {
+        if (!order?.specs || !currentEditedSpec) return false;
+
+        return [
+            isFieldModified(Number(order.specs.inner_diameter), Number(currentEditedSpec.inner_diameter)),
+            isFieldModified(Number(order.specs.outer_diameter), Number(currentEditedSpec.outer_diameter)),
+            isFieldModified(Number(order.specs.width), Number(currentEditedSpec.width)),
+            isFieldModified(Number(order.specs.minimum_shipping_weight), Number(currentEditedSpec.minimum_shipping_weight)),
+            isFieldModified(Number(order.specs.maximum_shipping_weight), Number(currentEditedSpec.maximum_shipping_weight)),
+            isFieldModified(Number(order.specs.pieces_per_package), Number(currentEditedSpec.pieces_per_package)),
+            isFieldModified(Number(order.specs.maximum_pallet_width), Number(currentEditedSpec.maximum_pallet_width)),
+            isFieldModified(order.specs.shipping_packaging, currentEditedSpec.shipping_packaging),
+            isFieldModified(order.specs.coil_orientation ?? 'vertical', coilOrientation),
+        ].some(Boolean);
+    }, [coilOrientation, currentEditedSpec, order?.specs]);
+
+    const tarimaGuard = useMemo(() => {
+        if (!currentEditedSpec) return null;
+        return getTarimaSubmissionGuard(currentEditedSpec, coilOrientation);
+    }, [coilOrientation, currentEditedSpec]);
 
     async function rejectOrder() {
         if (!order) return;
@@ -171,98 +209,91 @@ export default function DetalleEdicionOrden() {
     }
 
     async function requestReview() {
-        if (!order || !order.specs) return;
+        if (!order || !order.specs || !currentEditedSpec) return;
 
-        // Validar campos numéricos antes de enviar
-        const effInner = editedSpecs?.inner_diameter ?? order.specs.inner_diameter;
-        const effOuter = editedSpecs?.outer_diameter ?? order.specs.outer_diameter;
-        const effWidth = editedSpecs?.width ?? order.specs.width;
-        const effMinW = editedSpecs?.minimum_shipping_weight ?? order.specs.minimum_shipping_weight;
-        const effMaxW = editedSpecs?.maximum_shipping_weight ?? order.specs.maximum_shipping_weight;
-        const effPieces = editedSpecs?.pieces_per_package ?? order.specs.pieces_per_package;
-        const effPalletW = editedSpecs?.maximum_pallet_width ?? order.specs.maximum_pallet_width;
+        if (!hasSpecChanges) {
+            toast.error('Realiza al menos un cambio válido antes de solicitar revisión.');
+            return;
+        }
 
-        if (effInner != null && effInner < 1) { toast.error('El diámetro interno debe ser al menos 1 mm'); return; }
-        if (effOuter != null && effOuter < 1) { toast.error('El diámetro externo debe ser al menos 1 mm'); return; }
-        if (effInner != null && effOuter != null && effOuter <= effInner) { toast.error('El diámetro externo debe ser mayor al diámetro interno'); return; }
-        if (effWidth != null && effWidth < 1) { toast.error('El ancho debe ser al menos 1 mm'); return; }
-        if (effMinW != null && effMinW < 0.01) { toast.error('El peso mínimo debe ser mayor a 0'); return; }
-        if (effMaxW != null && effMaxW < 0.01) { toast.error('El peso máximo debe ser mayor a 0'); return; }
-        if (effMinW != null && effMaxW != null && effMaxW < effMinW) { toast.error('El peso máximo debe ser mayor o igual al peso mínimo'); return; }
-        if (effPieces != null && (effPieces < 1 || !Number.isInteger(effPieces))) { toast.error('Las piezas por paquete deben ser un número entero mayor a 0'); return; }
-        if (effPalletW != null && effPalletW < 1) { toast.error('El ancho máximo de tarima debe ser al menos 1 mm'); return; }
+        if (!tarimaGuard?.canSubmit) {
+            toast.error(tarimaGuard?.hardErrors[0] ?? 'Corrige la especificación antes de solicitar revisión.');
+            return;
+        }
 
         try {
-            // Primero cambiar el status a 'Revision Operador'
-            
+            const note = clientNote.trim() === '' ? 'No hay comentario proporcionado' : clientNote.trim();
+            const allSpecsToPersist = {
+                inner_diameter: currentEditedSpec.inner_diameter ?? order.specs.inner_diameter,
+                outer_diameter: currentEditedSpec.outer_diameter ?? order.specs.outer_diameter,
+                width: currentEditedSpec.width ?? order.specs.width,
+                minimum_shipping_weight: currentEditedSpec.minimum_shipping_weight ?? order.specs.minimum_shipping_weight,
+                maximum_shipping_weight: currentEditedSpec.maximum_shipping_weight ?? order.specs.maximum_shipping_weight,
+                pieces_per_package: currentEditedSpec.pieces_per_package ?? order.specs.pieces_per_package,
+                maximum_pallet_width: currentEditedSpec.maximum_pallet_width ?? order.specs.maximum_pallet_width,
+                shipping_packaging: currentEditedSpec.shipping_packaging ?? order.specs.shipping_packaging,
+                coil_orientation: coilOrientation,
+                product_id: order.product_id,
+            };
 
-            // Si hay cambios en los specs, insertarlos en order_offers_specs
-            const hasChanges = order.specs && editedSpecs && Object.keys(editedSpecs).some(key => {
-                const specKey = key as keyof OrderSpecs;
-                const editedValue = editedSpecs[specKey];
-                const originalValue = order.specs![specKey];
-                
-                return editedValue !== undefined && 
-                       editedValue !== null && 
-                       originalValue !== editedValue;
-            });
+            let newSpecsId = orderOffer?.new_specs_id;
 
-            if (hasChanges && editedSpecs) {
-                // Primero insertar todos los specs (modificados y no modificados) en order_offers_specs
-                const allSpecsToInsert = {
-                    inner_diameter: editedSpecs.inner_diameter ?? order.specs!.inner_diameter,
-                    outer_diameter: editedSpecs.outer_diameter ?? order.specs!.outer_diameter,
-                    width: editedSpecs.width ?? order.specs.width,
-                    minimum_shipping_weight: editedSpecs.minimum_shipping_weight ?? order.specs.minimum_shipping_weight,
-                    maximum_shipping_weight: editedSpecs.maximum_shipping_weight ?? order.specs.maximum_shipping_weight,
-                    pieces_per_package: editedSpecs.pieces_per_package ?? order.specs.pieces_per_package,
-                    maximum_pallet_width: editedSpecs.maximum_pallet_width ?? order.specs.maximum_pallet_width,
-                    shipping_packaging: editedSpecs.shipping_packaging ?? order.specs.shipping_packaging,
-                    coil_orientation: coilOrientation,
-                    product_id: order.product_id
-                };
+            if (newSpecsId) {
+                const { error: specsError } = await supabase
+                    .from('order_offers_specs')
+                    .update(allSpecsToPersist)
+                    .eq('id', newSpecsId);
 
+                if (specsError) throw specsError;
+            } else {
                 const { data: specsData, error: specsError } = await supabase
                     .from('order_offers_specs')
-                    .insert(allSpecsToInsert)
-                    .select()
+                    .insert(allSpecsToPersist)
+                    .select('id')
                     .single();
 
                 if (specsError) throw specsError;
+                newSpecsId = specsData.id;
+            }
 
-                const { data: offerData, error: offerError } = await supabase
+            if (orderOffer?.id) {
+                const { error: offerError } = await supabase
+                    .from('order_offers')
+                    .update({
+                        note,
+                        new_specs_id: newSpecsId,
+                    })
+                    .eq('id', orderOffer.id);
+
+                if (offerError) throw offerError;
+            } else {
+                const { error: offerError } = await supabase
                     .from('order_offers')
                     .insert({
                         order_id: order.id,
-                        created_by: user?.id , 
-                        note: clientNote== "" ? "No hay comentario proporcionado" : clientNote,
-                        new_specs_id: specsData.id,
-                        
-                    })
-                    .select()
-                    .single();
+                        created_by: user?.id,
+                        note,
+                        new_specs_id: newSpecsId,
+                    });
 
                 if (offerError) throw offerError;
-
-                await supabase
-                    .from('orders')
-                    .update({ 
-                        contra_offer: true,
-                    })
-                    .eq('id', order.id);
-                
-                const { error: statusError } = await supabase
-                .from('orders')
-                .update({ status: 'Revision Operador' })
-                .eq('id', order.id);
-
-            if (statusError) throw statusError;
             }
 
-            // Redirigir a la lista de órdenes
+            const { error: orderError } = await supabase
+                .from('orders')
+                .update({
+                    contra_offer: true,
+                    status: 'Revision Operador',
+                })
+                .eq('id', order.id);
+
+            if (orderError) throw orderError;
+
+            toast.success('Se envió la solicitud de revisión correctamente.');
             router.push('/ternium/clientes');
         } catch (error) {
             console.error('Error requesting review:', error);
+            toast.error('No fue posible solicitar la revisión.');
         }
     }
 
@@ -276,22 +307,12 @@ export default function DetalleEdicionOrden() {
     }
 
     const canEdit = order?.status === 'Revision Cliente';
-    const demoMode = false; // Cambiar a true para ver cambios de ejemplo
-    let demoOrderOffer = orderOffer;
-    
-    if (demoMode && order && !orderOffer) {
-        demoOrderOffer = {
-            specs: {
-                outer_diameter: 1280,
-                width: 1250,
-                shipping_packaging: "Caja de madera"
-            }
-        } as OrderOffer;
-    }
 
     const effectiveSpecs: OrderSpecs = {
+        ...(order?.specs ?? {}),
         ...(orderOffer?.specs ?? {}),
-        ...(editedSpecs ?? {})
+        ...(editedSpecs ?? {}),
+        coil_orientation: coilOrientation,
     };
 
     if (loading) {
@@ -371,8 +392,8 @@ export default function DetalleEdicionOrden() {
           <div className="flex justify-between items-center mb-8">
             <div className="flex items-center gap-3">
               <h2 className="font-bold text-slate-800 text-lg">Especificación Propuesta</h2>
-              <span className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold px-3 py-1 rounded-full border border-indigo-100 uppercase tracking-tighter">
-                <HiOutlineSparkles className="text-sm" /> Generado por modelo IA
+              <span className="flex items-center gap-1.5 bg-slate-100 text-slate-600 text-[10px] font-bold px-3 py-1 rounded-full border border-slate-200 uppercase tracking-tighter">
+                Especificación editable
               </span>
               {!canEdit && (
                 <span className="flex items-center gap-1.5 bg-slate-100 text-slate-500 text-[10px] font-bold px-3 py-1 rounded-full border border-slate-200 uppercase tracking-tighter">
@@ -389,7 +410,9 @@ export default function DetalleEdicionOrden() {
               >
                 Rehacer
               </button>
-              <span className="text-[11px] text-slate-400 italic">Última actualización: hace 12 min</span>
+              <span className="text-[11px] text-slate-400 italic">
+                {orderOffer ? 'Hay una contraoferta guardada para esta orden.' : 'Sin contraoferta enviada todavía.'}
+              </span>
             </div>
           </div>
 
@@ -401,8 +424,9 @@ export default function DetalleEdicionOrden() {
                 type="number"
                 step="1"
                 min="1"
+                max={TARIMA_INPUT_LIMITS.INNER_DIAMETER_MM.max}
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs?.inner_diameter ?? demoOrderOffer?.specs?.inner_diameter ?? order.specs?.inner_diameter))}
+                value={getInputValue((editedSpecs?.inner_diameter ?? orderOffer?.specs?.inner_diameter ?? order.specs?.inner_diameter))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
@@ -429,8 +453,9 @@ export default function DetalleEdicionOrden() {
                 type="number"
                 step="1"
                 min="1"
+                max={TARIMA_INPUT_LIMITS.OUTER_DIAMETER_MM.max}
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs?.outer_diameter ?? demoOrderOffer?.specs?.outer_diameter ?? order.specs?.outer_diameter))}
+                value={getInputValue((editedSpecs?.outer_diameter ?? orderOffer?.specs?.outer_diameter ?? order.specs?.outer_diameter))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
@@ -454,8 +479,9 @@ export default function DetalleEdicionOrden() {
                 type="number"
                 step="1"
                 min="1"
+                max={TARIMA_INPUT_LIMITS.WIDTH_MM.max}
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs?.width ?? demoOrderOffer?.specs?.width ?? order.specs?.width))}
+                value={getInputValue((editedSpecs?.width ?? orderOffer?.specs?.width ?? order.specs?.width))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
@@ -472,13 +498,14 @@ export default function DetalleEdicionOrden() {
 
             {/* Peso Mínimo */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peso Mínimo (kg)</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peso Mínimo (ton)</label>
               <input
                 type="number"
-                step="1"
+                step="0.01"
                 min="0.01"
+                max={TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.max}
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs?.minimum_shipping_weight ?? demoOrderOffer?.specs?.minimum_shipping_weight ?? order.specs?.minimum_shipping_weight))}
+                value={getInputValue((editedSpecs?.minimum_shipping_weight ?? orderOffer?.specs?.minimum_shipping_weight ?? order.specs?.minimum_shipping_weight))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
@@ -495,13 +522,14 @@ export default function DetalleEdicionOrden() {
 
             {/* Peso Máximo */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peso Máximo (kg)</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Peso Máximo (ton)</label>
               <input
                 type="number"
-                step="1"
+                step="0.01"
                 min="0.01"
+                max={TARIMA_INPUT_LIMITS.SHIPPING_WEIGHT_TONNES.max}
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs?.maximum_shipping_weight ?? demoOrderOffer?.specs?.maximum_shipping_weight ?? order.specs?.maximum_shipping_weight))}
+                value={getInputValue((editedSpecs?.maximum_shipping_weight ?? orderOffer?.specs?.maximum_shipping_weight ?? order.specs?.maximum_shipping_weight))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
@@ -523,8 +551,9 @@ export default function DetalleEdicionOrden() {
                 type="number"
                 step="1"
                 min="1"
+                max={TARIMA_INPUT_LIMITS.PIECES_PER_PACKAGE.max}
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs?.pieces_per_package ?? demoOrderOffer?.specs?.pieces_per_package ?? order.specs?.pieces_per_package))}
+                value={getInputValue((editedSpecs?.pieces_per_package ?? orderOffer?.specs?.pieces_per_package ?? order.specs?.pieces_per_package))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
@@ -546,8 +575,9 @@ export default function DetalleEdicionOrden() {
                 type="number"
                 step="1"
                 min="1"
+                max={TARIMA_INPUT_LIMITS.MAXIMUM_PALLET_WIDTH_MM.max}
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs?.maximum_pallet_width ?? demoOrderOffer?.specs?.maximum_pallet_width ?? order.specs?.maximum_pallet_width))}
+                value={getInputValue((editedSpecs?.maximum_pallet_width ?? orderOffer?.specs?.maximum_pallet_width ?? order.specs?.maximum_pallet_width))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
@@ -568,7 +598,8 @@ export default function DetalleEdicionOrden() {
               <input 
                 type="text" 
                 disabled={!canEdit}
-                value={getInputValue((editedSpecs?.shipping_packaging ?? demoOrderOffer?.specs?.shipping_packaging ?? order.specs?.shipping_packaging))}
+                maxLength={120}
+                value={getInputValue((editedSpecs?.shipping_packaging ?? orderOffer?.specs?.shipping_packaging ?? order.specs?.shipping_packaging))}
                 onChange={(e) => {
                     if (!canEdit) return;
                     const v = e.target.value;
@@ -614,6 +645,7 @@ export default function DetalleEdicionOrden() {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nota del Cliente</label>
               <textarea 
                 disabled={!canEdit}
+                maxLength={500}
                 value={clientNote}
                 onChange={(e) => {
                     if (!canEdit) return;
@@ -631,12 +663,28 @@ export default function DetalleEdicionOrden() {
         </section>
 
         {/* VISUALIZACIÓN 3D DE TARIMA */}
-        {editedSpecs && (
+        {currentEditedSpec && (
           <TarimaPanel
-            spec={editedSpecs}
+            spec={currentEditedSpec}
             orientation={coilOrientation}
             label="Simulación de Tarima"
           />
+        )}
+
+        {tarimaGuard && (tarimaGuard.hardErrors.length > 0 || tarimaGuard.warnings.length > 0) && (
+          <div className={`rounded-xl border p-4 ${tarimaGuard.canSubmit ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'}`}>
+            <p className={`text-xs font-black uppercase tracking-widest mb-3 ${tarimaGuard.canSubmit ? 'text-amber-700' : 'text-red-700'}`}>
+              {tarimaGuard.canSubmit ? 'Advertencias de validación' : 'Bloqueos para solicitar revisión'}
+            </p>
+            <ul className={`space-y-2 text-sm ${tarimaGuard.canSubmit ? 'text-amber-800' : 'text-red-800'}`}>
+              {tarimaGuard.hardErrors.map((message) => (
+                <li key={message}>• {message}</li>
+              ))}
+              {tarimaGuard.warnings.map((message) => (
+                <li key={message}>• {message}</li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {/* CARD 3: CAMBIOS DETECTADOS */}
@@ -645,7 +693,7 @@ export default function DetalleEdicionOrden() {
             <span className="text-orange-500 font-black text-xl">⇄</span>
             <h2 className="font-bold text-slate-800">Cambios Detectados</h2>
             <span className="text-xs text-slate-400 ml-auto">
-              {demoOrderOffer ? 'Contraoferta encontrada' : 'Sin contraoferta'} | 
+              {orderOffer ? 'Contraoferta encontrada' : 'Sin contraoferta'} | 
               Campos modificados: {[
                 isFieldModified(Number(order.specs?.inner_diameter), Number(effectiveSpecs?.inner_diameter)),
                 isFieldModified(Number(order.specs?.outer_diameter), Number(effectiveSpecs?.outer_diameter)),
@@ -654,7 +702,8 @@ export default function DetalleEdicionOrden() {
                 isFieldModified(Number(order.specs?.maximum_shipping_weight), Number(effectiveSpecs?.maximum_shipping_weight)),
                 isFieldModified(Number(order.specs?.pieces_per_package), Number(effectiveSpecs?.pieces_per_package)),
                 isFieldModified(Number(order.specs?.maximum_pallet_width), Number(effectiveSpecs?.maximum_pallet_width)),
-                isFieldModified(order.specs?.shipping_packaging, effectiveSpecs?.shipping_packaging)
+                isFieldModified(order.specs?.shipping_packaging, effectiveSpecs?.shipping_packaging),
+                isFieldModified(order.specs?.coil_orientation ?? 'vertical', coilOrientation)
               ].filter(Boolean).length}
             </span>
           </div>
@@ -716,10 +765,10 @@ export default function DetalleEdicionOrden() {
                 ) && (
                   <tr className="border-t border-slate-50">
                     <td className="px-8 py-4 font-bold text-slate-700">Peso Mínimo</td>
-                    <td className="px-8 py-4 text-slate-300 font-medium">{formatValue(order.specs?.minimum_shipping_weight, ' kg')}</td>
+                    <td className="px-8 py-4 text-slate-300 font-medium">{formatValue(order.specs?.minimum_shipping_weight, ' ton')}</td>
                     <td className="px-8 py-4 text-right">
                       <span className="text-orange-600 font-black flex items-center justify-end gap-1">
-                        {formatValue(effectiveSpecs?.minimum_shipping_weight, ' kg')} <HiOutlineTrendingUp className="text-lg" />
+                        {formatValue(effectiveSpecs?.minimum_shipping_weight, ' ton')} <HiOutlineTrendingUp className="text-lg" />
                       </span>
                     </td>
                   </tr>
@@ -730,10 +779,10 @@ export default function DetalleEdicionOrden() {
                 ) && (
                   <tr className="border-t border-slate-50">
                     <td className="px-8 py-4 font-bold text-slate-700">Peso Máximo</td>
-                    <td className="px-8 py-4 text-slate-300 font-medium">{formatValue(order.specs?.maximum_shipping_weight, ' kg')}</td>
+                    <td className="px-8 py-4 text-slate-300 font-medium">{formatValue(order.specs?.maximum_shipping_weight, ' ton')}</td>
                     <td className="px-8 py-4 text-right">
                       <span className="text-orange-600 font-black flex items-center justify-end gap-1">
-                        {formatValue(effectiveSpecs?.maximum_shipping_weight, ' kg')} <HiOutlineTrendingUp className="text-lg" />
+                        {formatValue(effectiveSpecs?.maximum_shipping_weight, ' ton')} <HiOutlineTrendingUp className="text-lg" />
                       </span>
                     </td>
                   </tr>
@@ -777,16 +826,20 @@ export default function DetalleEdicionOrden() {
                     </td>
                   </tr>
                 )}
-                {!demoOrderOffer || (
-                  !isFieldModified(Number(order.specs?.inner_diameter), Number(effectiveSpecs?.inner_diameter)) &&
-                  !isFieldModified(Number(order.specs?.outer_diameter), Number(effectiveSpecs?.outer_diameter)) &&
-                  !isFieldModified(Number(order.specs?.width), Number(effectiveSpecs?.width)) &&
-                  !isFieldModified(Number(order.specs?.minimum_shipping_weight), Number(effectiveSpecs?.minimum_shipping_weight)) &&
-                  !isFieldModified(Number(order.specs?.maximum_shipping_weight), Number(effectiveSpecs?.maximum_shipping_weight)) &&
-                  !isFieldModified(Number(order.specs?.pieces_per_package), Number(effectiveSpecs?.pieces_per_package)) &&
-                  !isFieldModified(Number(order.specs?.maximum_pallet_width), Number(effectiveSpecs?.maximum_pallet_width)) &&
-                  !isFieldModified(order.specs?.shipping_packaging, effectiveSpecs?.shipping_packaging)
-                ) && (
+                {isFieldModified(order.specs?.coil_orientation ?? 'vertical', coilOrientation) && (
+                  <tr className="border-t border-slate-50">
+                    <td className="px-8 py-4 font-bold text-slate-700">Orientación del Rollo</td>
+                    <td className="px-8 py-4 text-slate-300 font-medium">
+                      {(order.specs?.coil_orientation ?? 'vertical') === 'vertical' ? 'Ojo Vertical' : 'Ojo Horizontal'}
+                    </td>
+                    <td className="px-8 py-4 text-right">
+                      <span className="text-orange-600 font-black flex items-center justify-end gap-1">
+                        {coilOrientation === 'vertical' ? 'Ojo Vertical' : 'Ojo Horizontal'} <HiOutlineTrendingUp className="text-lg" />
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                {!hasSpecChanges && (
                   <tr>
                     <td colSpan={3} className="px-8 py-8 text-center text-slate-400 text-sm">
                       No se detectaron cambios en la especificación
@@ -795,16 +848,7 @@ export default function DetalleEdicionOrden() {
                 )}
               </tbody>
             </table>
-            {(demoOrderOffer && (
-              isFieldModified(Number(order.specs?.inner_diameter), Number(effectiveSpecs?.inner_diameter)) ||
-              isFieldModified(Number(order.specs?.outer_diameter), Number(effectiveSpecs?.outer_diameter)) ||
-              isFieldModified(Number(order.specs?.width), Number(effectiveSpecs?.width)) ||
-              isFieldModified(Number(order.specs?.minimum_shipping_weight), Number(effectiveSpecs?.minimum_shipping_weight)) ||
-              isFieldModified(Number(order.specs?.maximum_shipping_weight), Number(effectiveSpecs?.maximum_shipping_weight)) ||
-              isFieldModified(Number(order.specs?.pieces_per_package), Number(effectiveSpecs?.pieces_per_package)) ||
-              isFieldModified(Number(order.specs?.maximum_pallet_width), Number(effectiveSpecs?.maximum_pallet_width)) ||
-              isFieldModified(order.specs?.shipping_packaging, effectiveSpecs?.shipping_packaging)
-            )) && (
+            {(orderOffer || hasSpecChanges) && (
               <div className="m-4 bg-orange-50/50 border border-orange-100 p-3 rounded-lg flex items-center gap-3">
                 <HiOutlineExclamationCircle className="text-orange-500 text-lg shrink-0" />
                 <p className="text-[11px] text-orange-800 font-medium leading-tight">
@@ -834,7 +878,8 @@ export default function DetalleEdicionOrden() {
             </button>
             <button 
               onClick={requestReview}
-              className="bg-white border-2 border-slate-200 text-slate-600 px-8 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
+              disabled={!hasSpecChanges || !tarimaGuard?.canSubmit}
+              className="bg-white border-2 border-slate-200 text-slate-600 px-8 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <HiOutlineMailOpen className="text-lg" /> Solicitar Revisión
             </button>
@@ -893,4 +938,3 @@ export default function DetalleEdicionOrden() {
     </div>
   );
 };
-

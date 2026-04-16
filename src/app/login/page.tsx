@@ -1,15 +1,13 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getDefaultPathForRole } from "@/lib/permissions";
+import { getAuthorizedServerUser } from "@/lib/server-auth";
 import LoginForm from "../../components/LoginForm";
 
 export default async function LoginPage() {
-  const supabase = await createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const authorizedUser = await getAuthorizedServerUser();
 
-  if (session) {
-    redirect("/ternium/dashboard");
+  if (authorizedUser) {
+    redirect(getDefaultPathForRole(authorizedUser.roleName));
   }
 
   return <LoginForm />;

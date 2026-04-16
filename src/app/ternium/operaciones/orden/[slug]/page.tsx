@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { FiArrowLeft, FiCheckCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useOperacionDetail } from '@/hooks/operaciones/useOperacionDetail';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
 import { type ExecutionDetailsStatus } from '@/types/operaciones';
 
 type Tab = 'especificacion' | 'registro';
 
 export default function OperacionDetailPage() {
+  useRoleGuard('/ternium/operaciones');
   const router = useRouter();
   const params = useParams();
   const orderId = params.slug as string;
@@ -19,22 +21,21 @@ export default function OperacionDetailPage() {
     useOperacionDetail(orderId);
 
   const [activeTab, setActiveTab] = useState<Tab>('especificacion');
-  const [formData, setFormData] = useState({
+  const [draftFormData, setDraftFormData] = useState<{
     weight: '' as string,
     shipping_packaging: '',
     note: '',
-  });
+  } | null>(null);
 
-  // Populate form when order loads
-  useEffect(() => {
-    if (order?.execution_details) {
-      setFormData({
-        weight: order.execution_details.weight?.toString() ?? '',
-        shipping_packaging: order.execution_details.shipping_packaging ?? '',
-        note: order.execution_details.note ?? '',
-      });
-    }
-  }, [order?.execution_details]);
+  const formData = useMemo(
+    () =>
+      draftFormData ?? {
+        weight: order?.execution_details?.weight?.toString() ?? '',
+        shipping_packaging: order?.execution_details?.shipping_packaging ?? '',
+        note: order?.execution_details?.note ?? '',
+      },
+    [draftFormData, order?.execution_details]
+  );
 
   const isValidated = order?.execution_details?.status === 'Aceptado';
 
@@ -43,19 +44,21 @@ export default function OperacionDetailPage() {
       toast.error('El peso real debe ser al menos 1 ton');
       return;
     }
-    await saveExecutionDetails({
+    const ok = await saveExecutionDetails({
       weight: formData.weight ? parseFloat(formData.weight) : null,
       shipping_packaging: formData.shipping_packaging,
       note: formData.note,
     });
+    if (ok) setDraftFormData(null);
   };
 
   const handleValidate = async () => {
-    await validateEspecificacion({
+    const ok = await validateEspecificacion({
       weight: formData.weight ? parseFloat(formData.weight) : null,
       shipping_packaging: formData.shipping_packaging,
       note: formData.note,
     });
+    if (ok) setDraftFormData(null);
   };
 
   if (loading) {
@@ -211,7 +214,7 @@ export default function OperacionDetailPage() {
                     step="1"
                     min="1"
                     value={formData.weight}
-                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                    onChange={(e) => setDraftFormData({ ...formData, weight: e.target.value })}
                     disabled={isValidated}
                     placeholder="Ej: 12.5"
                     className="px-4 py-3 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 transition-all outline-none disabled:opacity-60 disabled:cursor-not-allowed text-sm"
@@ -224,7 +227,7 @@ export default function OperacionDetailPage() {
                   <input
                     type="text"
                     value={formData.shipping_packaging}
-                    onChange={(e) => setFormData({ ...formData, shipping_packaging: e.target.value })}
+                    onChange={(e) => setDraftFormData({ ...formData, shipping_packaging: e.target.value })}
                     disabled={isValidated}
                     placeholder="Ej: Paleta de madera"
                     className="px-4 py-3 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg focus:ring-2 focus:ring-orange-500 transition-all outline-none disabled:opacity-60 disabled:cursor-not-allowed text-sm"
@@ -236,7 +239,7 @@ export default function OperacionDetailPage() {
                   </label>
                   <textarea
                     value={formData.note}
-                    onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                    onChange={(e) => setDraftFormData({ ...formData, note: e.target.value })}
                     disabled={isValidated}
                     placeholder="Instrucciones especiales u observaciones..."
                     rows={3}

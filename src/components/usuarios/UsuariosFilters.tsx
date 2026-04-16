@@ -1,4 +1,4 @@
-import { FaSearch, FaFileExport } from 'react-icons/fa';
+import { FaSearch } from 'react-icons/fa';
 
 interface UsuariosFiltersProps {
   searchQuery: string;
@@ -18,13 +18,6 @@ export default function UsuariosFilters({ searchQuery, onSearchChange }: Usuario
           className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
         />
       </div>
-      <button
-        disabled
-        title="Próximamente"
-        className="flex items-center gap-2 px-6 py-3 border border-gray-200 rounded-xl font-bold text-sm text-gray-400 cursor-not-allowed opacity-60"
-      >
-        <FaFileExport size={14} /> Exportar
-      </button>
     </div>
   );
 }

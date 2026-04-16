@@ -8,6 +8,7 @@ import { useUsuarioData } from '@/hooks/usuarios/useUsuarioData';
 import UsuariosHeader from '@/components/usuarios/UsuariosHeader';
 import UsuariosFilters from '@/components/usuarios/UsuariosFilters';
 import UsuariosTable from '@/components/usuarios/UsuariosTable';
+import { getRoleLabel } from '@/lib/permissions';
 
 export default function UsuariosPage() {
   useRoleGuard('/ternium/usuarios');
@@ -24,7 +25,7 @@ export default function UsuariosPage() {
         const q = searchQuery.toLowerCase();
         const fullName = `${u.name ?? ''} ${u.second_name ?? ''}`.toLowerCase();
         const email = (u.email ?? '').toLowerCase();
-        const role = (u.roles?.name ?? '').toLowerCase();
+        const role = getRoleLabel(u.roles?.name).toLowerCase();
         return fullName.includes(q) || email.includes(q) || role.includes(q);
       })
     : usuarios;

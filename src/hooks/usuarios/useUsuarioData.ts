@@ -4,14 +4,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import type { Database } from '@/types/database';
+import { getUserCategoryForRole } from '@/lib/permissions';
 
 const supabase = createClient();
 
 type UserRow = Database['public']['Tables']['users']['Row'];
 type RoleRow = Database['public']['Tables']['roles']['Row'];
+type ClientWorkerRow = Database['public']['Tables']['client_workers']['Row'];
 
 export type UsuarioListItem = UserRow & {
     roles: Pick<RoleRow, 'id' | 'name'> | null;
+    clientLinks: Array<Pick<ClientWorkerRow, 'client_id'>>;
 };
 
 export function useUsuarioData() {
@@ -58,11 +61,30 @@ export function useUsuarioData() {
 
     const fetchUsuarios = useCallback(async () => {
         try {
-            const { data, error } = await supabase
-              .from('users')
-              .select(`*, roles(name, id)`);
-            if (error) throw error;
-            if (data) setUsuarios(data as UsuarioListItem[]);
+            const [usersRes, clientWorkersRes] = await Promise.all([
+                supabase.from('users').select('*, roles(name, id)'),
+                supabase.from('client_workers').select('user_id, client_id'),
+            ]);
+
+            if (usersRes.error) throw usersRes.error;
+            if (clientWorkersRes.error) throw clientWorkersRes.error;
+
+            const clientLinksByUserId = new Map<string, Array<Pick<ClientWorkerRow, 'client_id'>>>();
+
+            (clientWorkersRes.data ?? []).forEach((link) => {
+                const currentLinks = clientLinksByUserId.get(link.user_id) ?? [];
+                currentLinks.push({ client_id: link.client_id });
+                clientLinksByUserId.set(link.user_id, currentLinks);
+            });
+
+            if (usersRes.data) {
+                setUsuarios(
+                    (usersRes.data as Array<UserRow & { roles: Pick<RoleRow, 'id' | 'name'> | null }>).map((user) => ({
+                        ...user,
+                        clientLinks: clientLinksByUserId.get(user.id) ?? [],
+                    }))
+                );
+            }
         } catch (error) {
             console.error('Error al cargar usuarios:', error);
         } finally {
@@ -99,6 +121,34 @@ export function useUsuarioData() {
 
     async function changeRole(userId: string, newRoleId: number) {
         try {
+            const selectedUser = usuarios.find((user) => user.id === userId);
+
+            if (!selectedUser) {
+                throw new Error('No se encontró el usuario a actualizar');
+            }
+
+            const { data: targetRole, error: targetRoleError } = await supabase
+                .from('roles')
+                .select('id, name')
+                .eq('id', newRoleId)
+                .single();
+
+            if (targetRoleError) throw targetRoleError;
+
+            const currentCategory = selectedUser.clientLinks.length > 0
+                ? 'external'
+                : getUserCategoryForRole(selectedUser.roles?.name);
+            const targetCategory = getUserCategoryForRole(targetRole?.name);
+
+            if (currentCategory && targetCategory && currentCategory !== targetCategory) {
+                if (currentCategory === 'external') {
+                    toast.error('Los usuarios externos solo pueden mantener roles de cliente');
+                } else {
+                    toast.error('No se puede convertir un usuario interno en cliente desde esta pantalla');
+                }
+                return;
+            }
+
             const { error } = await supabase
                 .from('users')
                 .update({ role_id: newRoleId })

@@ -26,7 +26,7 @@ type Tab = 'trabajadores' | 'gestores';
 
 export default function LeaderboardPage() {
   useRoleGuard('/ternium/leaderboard');
-  const [period, setPeriod] = useState<Period>('month');
+  const [period, setPeriod] = useState<Period>('week');
   const [tab, setTab] = useState<Tab>('trabajadores');
 
   const { trabajadores, gestores, loading } = useLeaderboardData(period);
@@ -150,15 +150,6 @@ export default function LeaderboardPage() {
                   </span>
                 </button>
 
-                {/* Score explanation */}
-                <div className="ml-auto flex items-center px-6">
-                  <p className="text-[10px] text-slate-400">
-                    {tab === 'trabajadores'
-                      ? 'Score = asignaciones + (1 − tasa reasignación) × 10'
-                      : 'Score = revisiones + tasa aceptación × 5'
-                    }
-                  </p>
-                </div>
               </div>
 
               <LeaderboardTable

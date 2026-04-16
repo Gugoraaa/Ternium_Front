@@ -6,22 +6,12 @@ import { FaEllipsisV } from 'react-icons/fa';
 import { FiCheck, FiX } from 'react-icons/fi';
 import { createClient } from '@/lib/supabase/client';
 import type { UsuarioListItem } from '@/hooks/usuarios/useUsuarioData';
+import { getRoleLabel, getUserCategoryForRole, normalizeRoleName } from '@/lib/permissions';
 
 const supabase = createClient();
 
-const ROLE_LABELS: Record<string, string> = {
-  user_admin:          'Administrador',
-  admin:               'Super Admin',
-  order_manager:       'Gestión de Órdenes',
-  scheduler:           'Programación',
-  operations_manager:  'Operaciones',
-  client_manager:      'Clientes',
-  order_controller:    'Control Despacho',
-  dispatcher:          'Despacho',
-};
-
 function getRoleStyle(role: string) {
-  switch (role) {
+  switch (normalizeRoleName(role)) {
     case 'user_admin':         return 'bg-slate-100 border-slate-200 text-slate-600';
     case 'admin':              return 'bg-red-50 border-red-100 text-red-600';
     case 'order_manager':      return 'bg-emerald-50 border-emerald-100 text-emerald-600';
@@ -146,6 +136,14 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, offb
     if (!menuPosition || typeof document === 'undefined') return null;
 
     const isOffboarded = Boolean(user.offboarded_at);
+    const currentCategory = user.clientLinks.length > 0
+      ? 'external'
+      : getUserCategoryForRole(user.roles?.name);
+    const availableRoles = roles.filter((role) => {
+      const targetCategory = getUserCategoryForRole(role.name);
+      if (!currentCategory || !targetCategory) return true;
+      return currentCategory === targetCategory;
+    });
     const menuStyles = menuPosition.direction === 'up'
       ? { right: menuPosition.right, bottom: menuPosition.bottom }
       : { right: menuPosition.right, top: menuPosition.top };
@@ -164,7 +162,7 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, offb
                 className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${user.active ? 'bg-gray-400' : 'bg-green-500'}`} />
-                {user.active ? 'Desactivar usuario' : 'Activar usuario'}
+                {user.active ? 'Desactivar temporalmente' : 'Activar acceso'}
               </button>
             )}
 
@@ -211,9 +209,9 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, offb
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 focus:ring-2 focus:ring-[#ff4301]/20 focus:border-[#ff4301]/40 outline-none"
             >
               <option value="">Seleccionar rol</option>
-              {roles.map((r) => (
+              {availableRoles.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {ROLE_LABELS[r.name] ?? r.name}
+                  {getRoleLabel(r.name)}
                 </option>
               ))}
             </select>
@@ -238,7 +236,7 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, offb
         {menuMode === 'confirmDelete' && (
           <div className="p-3 flex flex-col gap-2">
             <p className="text-sm font-semibold text-slate-800">¿Dar de baja a {user.name}?</p>
-            <p className="text-[11px] text-slate-400">Bloquea el acceso del usuario y conserva su historial operativo.</p>
+            <p className="text-[11px] text-slate-400">La baja es administrativa y permanente hasta reactivación explícita. No es lo mismo que desactivar temporalmente.</p>
             <div className="flex gap-2">
               <button
                 onClick={closeMenu}
@@ -321,7 +319,7 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, offb
                 {/* Rol */}
                 <td className="p-5">
                   <span className={`px-3 py-1 rounded-lg text-[10px] font-bold border ${getRoleStyle(roleName)}`}>
-                    {(ROLE_LABELS[roleName] ?? roleName) || 'Sin Rol'}
+                    {getRoleLabel(roleName)}
                   </span>
                 </td>
 

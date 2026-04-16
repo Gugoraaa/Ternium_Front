@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { QuickAction } from '@/hooks/dashboard/useDashboardData';
-import { FiPlus, FiCalendar, FiClipboard, FiUsers, FiCheckCircle, FiTool } from 'react-icons/fi';
+import { FiPlus, FiCalendar, FiClipboard, FiUsers, FiCheckCircle, FiTool, FiBriefcase } from 'react-icons/fi';
 
 const iconMap: Record<string, React.ReactNode> = {
   plus:        <FiPlus size={20} />,
@@ -9,6 +9,7 @@ const iconMap: Record<string, React.ReactNode> = {
   users:       <FiUsers size={20} />,
   checkCircle: <FiCheckCircle size={20} />,
   wrench:      <FiTool size={20} />,
+  briefcase:   <FiBriefcase size={20} />,
 };
 
 interface QuickActionsProps {

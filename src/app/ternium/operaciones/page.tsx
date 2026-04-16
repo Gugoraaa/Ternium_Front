@@ -9,12 +9,8 @@ import { useRoleGuard } from '@/hooks/useRoleGuard';
 export default function OperacionesPage() {
   useRoleGuard('/ternium/operaciones');
   const router = useRouter();
-  const { orders: allOrders, loading, error, filters, pagination, updateFilters, updatePage } =
+  const { orders, loading, error, filters, pagination, clientOptions, updateFilters, updatePage } =
     useOperacionesOrders();
-
-  const orders = filters.client === 'Todos los clientes'
-    ? allOrders
-    : allOrders.filter((o) => o.client?.name === filters.client);
 
   const getResponsibleName = (order: (typeof orders)[number]) => {
     const user = order.programing_instructions?.responsible_user;
@@ -86,9 +82,10 @@ export default function OperacionesPage() {
                 value={filters.client}
                 onChange={(e) => updateFilters({ client: e.target.value })}
               >
-                <option value="Todos los clientes">Todos los clientes</option>
-                {[...new Set(orders.map((o) => o.client?.name).filter(Boolean))].map((name) => (
-                  <option key={name} value={name!}>{name}</option>
+                {clientOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
                 ))}
               </select>
             </div>

@@ -4,14 +4,15 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { HiOutlineDownload, HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineQuestionMarkCircle } from "react-icons/hi";
+import { HiOutlineCheckCircle, HiOutlineXCircle, HiOutlineQuestionMarkCircle } from "react-icons/hi";
 import { FiSettings, FiPackage, FiTruck, FiActivity } from "react-icons/fi";
 import toast from 'react-hot-toast';
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AcceptOrderButton from '@/components/AcceptOrderButton';
 import StatusPill from '@/components/StatusPill';
-import type { OrderSpecs,OrderOffer,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
+import type { OrderSpecs,OrderOfferWithSpecs,OrderDetails } from '@/types/orders';
 import type { CoilOrientation } from '@/lib/tarima/types';
 
 const TarimaComparisonPanel = dynamic(
@@ -21,6 +22,7 @@ const TarimaComparisonPanel = dynamic(
 
 
 export default function OrdenDetail() {
+  useRoleGuard('/ternium/gestion');
   const params = useParams();
   const router = useRouter();
   const supabase = createClient();
@@ -32,6 +34,7 @@ export default function OrdenDetail() {
 
   useEffect(() => {
     fetchOrderDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.slug]);
 
   async function fetchOrderDetails() {
@@ -78,6 +81,7 @@ export default function OrdenDetail() {
             pieces_per_package: offerData.specs.pieces_per_package ?? undefined,
             maximum_pallet_width: offerData.specs.maximum_pallet_width ?? undefined,
             shipping_packaging: offerData.specs.shipping_packaging ?? undefined,
+            coil_orientation: offerData.specs.coil_orientation ?? undefined,
           } : {};
 
           setOrderOffer({
@@ -96,7 +100,7 @@ export default function OrdenDetail() {
   
 
 
-  function isFieldModified(originalValue: any, newValue?: any) {
+  function isFieldModified(originalValue: unknown, newValue?: unknown) {
     // Solo considerar modificado si ambos valores existen y son diferentes
     return originalValue !== undefined && 
            originalValue !== null && 
@@ -120,12 +124,12 @@ export default function OrdenDetail() {
 
       toast.success('Orden rechazada correctamente');
       router.push('/ternium/gestion');
-    } catch (error) {
+    } catch {
       toast.error('Error al rechazar la orden. Intenta nuevamente.');
     }
   }
 
-  function formatValue(value: any, unit: string = '') {
+  function formatValue(value: unknown, unit: string = '') {
     return value !== undefined && value !== null ? `${value}${unit}` : 'N/A';
   }
 
@@ -167,9 +171,6 @@ export default function OrdenDetail() {
           </h1>
           <p className="text-slate-500 text-sm mt-1">Información completa y especificaciones de la orden.</p>
         </div>
-        <button className="flex items-center gap-2 bg-white border border-slate-200 px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition-all text-slate-700">
-          <HiOutlineDownload className="text-lg" /> Descargar PDF
-        </button>
       </div>
 
       <div className="max-w-6xl mx-auto space-y-6">
@@ -206,7 +207,7 @@ export default function OrdenDetail() {
           <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm relative overflow-hidden">
              <div className="flex justify-between items-center mb-8">
                 <h2 className="flex items-center gap-3 font-black text-slate-800 uppercase text-xs tracking-widest">
-                   Especificación Original (IA)
+                   Especificación Original
                 </h2>
                 <span className="text-[9px] bg-slate-100 text-slate-500 font-bold px-3 py-1 rounded-md uppercase">Sólo lectura</span>
              </div>
@@ -459,7 +460,7 @@ export default function OrdenDetail() {
                       <FiActivity className="text-slate-400" /> Comentario del cliente
                     </p>
                     <p className="text-xs text-slate-600 italic leading-relaxed font-medium">
-                      "{orderOffer.note}"
+                      &quot;{orderOffer.note}&quot;
                     </p>
                     <div className="mt-3 text-[9px] text-slate-400">
                       <span className="font-medium">Creado por:</span> {orderOffer.created_by} | 
@@ -552,4 +553,3 @@ export default function OrdenDetail() {
     </div>
   );
 }
-

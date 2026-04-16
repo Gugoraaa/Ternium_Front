@@ -7,8 +7,9 @@ export type ShippingInfo = Database['public']['Tables']['shipping_info']['Row'];
 export type ProgramingStatus = Database['public']['Enums']['programing-status-enum'];
 
 export interface ResponsibleUser {
+  id?: string;
   name: string;
-  second_name: string;
+  second_name: string | null;
 }
 
 export interface ProgramingInstructionWithUser {

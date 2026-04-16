@@ -9,16 +9,7 @@ import KpiCard from '@/components/dashboard/KpiCard';
 import AlertBanner from '@/components/dashboard/AlertBanner';
 import QuickActions from '@/components/dashboard/QuickActions';
 import RecentOrdersMini from '@/components/dashboard/RecentOrdersMini';
-
-const roleModuleMap: Record<string, { link: string; label: string }> = {
-  order_manager:     { link: '/ternium/gestion',      label: 'Gestión' },
-  scheduler:         { link: '/ternium/programacion', label: 'Programación' },
-  operations_manager:{ link: '/ternium/operaciones',  label: 'Operaciones' },
-  order_controller:  { link: '/ternium/management',   label: 'Management' },
-  client_manager:    { link: '/ternium/clientes',     label: 'Clientes' },
-  user_admin:        { link: '/ternium/usuarios',     label: 'Usuarios' },
-  admin:             { link: '/ternium/gestion',      label: 'Gestión' },
-};
+import { getRoleMeta } from '@/lib/permissions';
 
 export default function DashboardPage() {
   useRoleGuard('/ternium/dashboard');
@@ -26,7 +17,10 @@ export default function DashboardPage() {
   const { userName, kpis, recentOrders, alerts, quickActions, loading } = useDashboardData();
 
   const role = user?.role_name ?? '';
-  const module = roleModuleMap[role] ?? { link: '/ternium/gestion', label: 'Gestión' };
+  const moduleInfo = getRoleMeta(role);
+  const recentModule = moduleInfo
+    ? { link: moduleInfo.primaryModulePath, label: moduleInfo.primaryModuleLabel }
+    : { link: '/ternium/gestion', label: 'Gestion' };
 
   if (loading) {
     return (
@@ -56,8 +50,8 @@ export default function DashboardPage() {
 
         <RecentOrdersMini
           orders={recentOrders}
-          moduleLink={module.link}
-          moduleLabel={module.label}
+          moduleLink={recentModule.link}
+          moduleLabel={recentModule.label}
         />
 
       </div>

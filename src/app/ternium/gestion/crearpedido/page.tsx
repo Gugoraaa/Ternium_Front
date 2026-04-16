@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import {
   FiSearch, FiGrid, FiUser, FiZap, FiSave,
@@ -12,7 +12,43 @@ import toast from 'react-hot-toast';
 import { useUser } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import TarimaLoadingFallback from '@/components/tarima/TarimaLoadingFallback';
+import { useRoleGuard } from '@/hooks/useRoleGuard';
+import { getTarimaSubmissionGuard } from '@/lib/tarima/validations';
 import type { CoilOrientation } from '@/lib/tarima/types';
+import type { Database } from '@/types/database';
+
+type SpecRecord = Database['public']['Tables']['specs']['Row'];
+
+interface ProductLookup {
+  id: number;
+}
+
+interface FormState {
+  producto: string;
+  masterId: string;
+  cliente: string;
+  clienteId: string;
+}
+
+interface ClientSuggestion {
+  id: string;
+  name: string;
+}
+
+interface ProductSuggestion {
+  pt: string;
+}
+
+interface MasterSuggestion {
+  master: string;
+}
+
+interface SuggestionItem {
+  id?: string | number;
+  name?: string;
+  pt?: string;
+  master?: string;
+}
 
 const TarimaPanel = dynamic(() => import('@/components/tarima/TarimaPanel'), {
   ssr: false,
@@ -20,42 +56,40 @@ const TarimaPanel = dynamic(() => import('@/components/tarima/TarimaPanel'), {
 });
 
 const CapturaOrden = () => {
+  useRoleGuard('/ternium/gestion');
   const { user } = useUser();
   const router = useRouter();
   
 
   const [isChecked, setIsChecked] = useState(false);
   const [coilOrientation, setCoilOrientation] = useState<CoilOrientation>('vertical');
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormState>({
     producto: '',
     masterId: '',
     cliente: '',
     clienteId: ''
   });
-  const [specData, setSpecData] = useState<any>(null);
+  const [specData, setSpecData] = useState<SpecRecord | null>(null);
   const [loading, setLoading] = useState(false);
-  const [clienteSuggestions, setClienteSuggestions] = useState<any[]>([]);
+  const [clienteSuggestions, setClienteSuggestions] = useState<ClientSuggestion[]>([]);
   const [showClienteDropdown, setShowClienteDropdown] = useState(false);
-  const [productSuggestions, setProductSuggestions] = useState<any[]>([]);
+  const [productSuggestions, setProductSuggestions] = useState<ProductSuggestion[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
-  const [masterSuggestions, setMasterSuggestions] = useState<any[]>([]);
+  const [masterSuggestions, setMasterSuggestions] = useState<MasterSuggestion[]>([]);
   const [showMasterDropdown, setShowMasterDropdown] = useState(false);
-  const [productData, setProductData] = useState<any>(null);
+  const [productData, setProductData] = useState<ProductLookup | null>(null);
   const supabase = createClient();
 
-  // Pre-fill Yamaha as default client for admin users
-  useEffect(() => {
-    if (user?.role_name !== 'admin') return;
-    supabase
-      .from('clients')
-      .select('id, name')
-      .ilike('name', 'yamaha')
-      .limit(1)
-      .single()
-      .then(({ data }) => {
-        if (data) setFormData(prev => ({ ...prev, cliente: data.name, clienteId: data.id }));
-      });
-  }, [user?.role_name]);
+  const tarimaGuard = useMemo(() => {
+    if (!specData) return null;
+    return getTarimaSubmissionGuard(
+      {
+        ...specData,
+        coil_orientation: coilOrientation,
+      },
+      coilOrientation
+    );
+  }, [coilOrientation, specData]);
 
   const calculateProgress = () => {
     let completed = 0;
@@ -96,7 +130,7 @@ const CapturaOrden = () => {
     }
   };
 
-  const selectCliente = (cliente: any) => {
+  const selectCliente = (cliente: ClientSuggestion) => {
     setFormData(prev => ({ ...prev, cliente: cliente.name, clienteId: cliente.id }));
     setShowClienteDropdown(false);
     setClienteSuggestions([]);
@@ -110,7 +144,7 @@ const CapturaOrden = () => {
       const { data, error } = await req;
       if (error) throw error;
 
-      const unique = [...new Set((data || []).map((p: any) => p.pt))].map(pt => ({ pt }));
+      const unique = [...new Set((data || []).map((p) => p.pt).filter(Boolean))].map((pt) => ({ pt: pt! }));
       setProductSuggestions(unique);
       setShowProductDropdown(unique.length > 0);
     } catch (error) {
@@ -135,7 +169,7 @@ const CapturaOrden = () => {
       const { data, error } = await req;
       if (error) throw error;
 
-      const unique = [...new Set((data || []).map((p: any) => p.master))].map(m => ({ master: m }));
+      const unique = [...new Set((data || []).map((p) => p.master).filter(Boolean))].map((master) => ({ master: master! }));
       setMasterSuggestions(unique);
       setShowMasterDropdown(unique.length > 0);
     } catch (error) {
@@ -160,17 +194,47 @@ const CapturaOrden = () => {
       return;
     }
 
+    if (!tarimaGuard?.canSubmit) {
+      toast.error(tarimaGuard?.hardErrors[0] ?? 'Corrige la especificación antes de generar la orden.');
+      return;
+    }
+
     setLoading(true);
     toast.loading('Generando orden...', { id: 'generateOrder' });
 
     try {
-      const { data: orderData, error: orderError } = await supabase
+      let specsId = specData.id;
+      const originalOrientation = specData.coil_orientation ?? 'vertical';
+
+      if (coilOrientation !== originalOrientation) {
+        const { data: clonedSpecs, error: cloneError } = await supabase
+          .from('specs')
+          .insert({
+            product_id: specData.product_id ?? productData.id,
+            inner_diameter: specData.inner_diameter,
+            outer_diameter: specData.outer_diameter,
+            width: specData.width,
+            minimum_shipping_weight: specData.minimum_shipping_weight,
+            maximum_shipping_weight: specData.maximum_shipping_weight,
+            pieces_per_package: specData.pieces_per_package,
+            maximum_pallet_width: specData.maximum_pallet_width,
+            shipping_packaging: specData.shipping_packaging,
+            coil_orientation: coilOrientation,
+          })
+          .select('id')
+          .single();
+
+        if (cloneError) throw cloneError;
+        specsId = clonedSpecs.id;
+      }
+
+      const { error: orderError } = await supabase
         .from('orders')
         .insert({
           worker_id: user?.id,
           client_id: formData.clienteId,
           product_id: productData.id,
-          specs_id: specData.id,
+          specs_id: specsId,
           reviewed_by: null
         })
         .select()
@@ -194,11 +258,12 @@ const CapturaOrden = () => {
         setSpecData(null);
         setProductData(null);
         setIsChecked(false);
+        setCoilOrientation('vertical');
       }, 2000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al generar orden:', error);
-      toast.error(error.message || 'Error al generar orden', { id: 'generateOrder' });
+      toast.error(error instanceof Error ? error.message : 'Error al generar orden', { id: 'generateOrder' });
     } finally {
       setLoading(false);
     }
@@ -242,9 +307,9 @@ const CapturaOrden = () => {
 
       setSpecData(specsData);
       toast.success('Especificación generada exitosamente', { id: 'generateSpec' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error al generar especificación:', error);
-      toast.error(error.message || 'Error al generar especificación', { id: 'generateSpec' });
+      toast.error(error instanceof Error ? error.message : 'Error al generar especificación', { id: 'generateSpec' });
     } finally {
       setLoading(false);
     }
@@ -307,8 +372,8 @@ const CapturaOrden = () => {
                   onBlur={() => setTimeout(() => setShowMasterDropdown(false), 150)}
                   suggestions={masterSuggestions}
                   showDropdown={showMasterDropdown}
-                  onSelect={(item: any) => selectMaster(item.master)}
-                  getSuggestionLabel={(item: any) => item.master}
+                  onSelect={(item) => item.master && selectMaster(item.master)}
+                  getSuggestionLabel={(item) => item.master || ''}
                 />
                 <InputGroup 
                   label="Cliente" 
@@ -320,8 +385,8 @@ const CapturaOrden = () => {
                   onBlur={() => setTimeout(() => setShowClienteDropdown(false), 150)}
                   suggestions={clienteSuggestions}
                   showDropdown={showClienteDropdown}
-                  onSelect={selectCliente}
-                  getSuggestionLabel={(item: any) => item.name}
+                  onSelect={(item) => item.id && item.name && selectCliente({ id: String(item.id), name: item.name })}
+                  getSuggestionLabel={(item) => item.name || ''}
                 />
               </div>
 
@@ -343,7 +408,9 @@ const CapturaOrden = () => {
             <div className="p-4 border-b border-slate-100 flex justify-between items-center">
               <div>
                 <h2 className="font-bold text-slate-800">Especificación generada</h2>
-                <p className="text-[10px] text-slate-400 mt-0.5 tracking-wide">🕒 24 Oct, 10:42 AM</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 tracking-wide">
+                  {specData ? 'Lista para revisión operativa.' : 'Completa la búsqueda para cargar especificaciones.'}
+                </p>
               </div>
             </div>
 
@@ -387,6 +454,22 @@ const CapturaOrden = () => {
                 />
               )}
 
+              {tarimaGuard && (tarimaGuard.hardErrors.length > 0 || tarimaGuard.warnings.length > 0) && (
+                <div className={`rounded-xl border p-4 ${tarimaGuard.canSubmit ? 'border-amber-200 bg-amber-50' : 'border-red-200 bg-red-50'}`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${tarimaGuard.canSubmit ? 'text-amber-700' : 'text-red-700'}`}>
+                    {tarimaGuard.canSubmit ? 'Advertencias de tarima' : 'Bloqueos de tarima'}
+                  </p>
+                  <ul className={`space-y-1 text-xs ${tarimaGuard.canSubmit ? 'text-amber-800' : 'text-red-800'}`}>
+                    {tarimaGuard.hardErrors.map((message) => (
+                      <li key={message}>• {message}</li>
+                    ))}
+                    {tarimaGuard.warnings.map((message) => (
+                      <li key={message}>• {message}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               
 
               {/* Validación y Responsabilidad */}
@@ -403,7 +486,7 @@ const CapturaOrden = () => {
                       Confirmo que he revisado y validado todos los parámetros generados para esta orden.
                     </p>
                     <p className="text-[11px] text-slate-400 italic mt-1">
-                      La validación implica conformidad operativa con los valores calculados por el modelo.
+                      La validación implica conformidad operativa con los valores mostrados y sus límites logísticos.
                     </p>
                   </div>
                   
@@ -431,7 +514,9 @@ const CapturaOrden = () => {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h3 className="font-black text-slate-800 text-lg tracking-tight">ORDEN #{formData.masterId || 'NUEVA'}</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Creado: Hoy, 09:30 AM</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
+                    {specData ? 'Lista para generar' : 'Pendiente de completar'}
+                  </p>
                 </div>
                 <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-[10px] font-black uppercase">Borrador</span>
               </div>
@@ -448,7 +533,6 @@ const CapturaOrden = () => {
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Lista de Verificación</h4>
               <ul className="space-y-4">
                 <CheckItem 
-                  done={formData.producto && formData.masterId && formData.cliente}
                   title="Datos Base Capturados" 
                   sub="Cliente y producto definidos" 
                   formData={formData}
@@ -456,15 +540,13 @@ const CapturaOrden = () => {
                   isChecked={isChecked}
                 />
                 <CheckItem 
-                  done={!!specData}
                   title="Especificación Generada" 
-                  sub="Valores calculados por modelo" 
+                  sub="Valores listos para validación" 
                   formData={formData}
                   specData={specData}
                   isChecked={isChecked}
                 />
                 <CheckItem 
-                  done={isChecked}
                   title="Validación Final" 
                   sub="Pendiente de envío" 
                   formData={formData}
@@ -478,9 +560,9 @@ const CapturaOrden = () => {
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <button 
                 onClick={handleGenerateOrder}
-                disabled={loading || !isChecked}
+                disabled={loading || !isChecked || !tarimaGuard?.canSubmit}
                 className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 ${
-                  loading || !isChecked 
+                  loading || !isChecked || !tarimaGuard?.canSubmit
                     ? 'bg-gray-400 text-gray-200 cursor-not-allowed shadow-none' 
                     : 'bg-[#ff4301] hover:bg-[#e63d01] text-white shadow-orange-100'
                 }`}
@@ -497,7 +579,33 @@ const CapturaOrden = () => {
 
 // --- COMPONENTES AUXILIARES ---
 
-const InputGroup = ({ label, placeholder, icon, value, onChange, onFocus, onBlur, suggestions, showDropdown, onSelect, getSuggestionLabel }: any) => (
+interface InputGroupProps {
+  label: string;
+  placeholder: string;
+  icon: React.ReactNode;
+  value: string;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onFocus: () => void;
+  onBlur: () => void;
+  suggestions: SuggestionItem[];
+  showDropdown: boolean;
+  onSelect: (item: SuggestionItem) => void;
+  getSuggestionLabel?: (item: SuggestionItem) => string;
+}
+
+const InputGroup = ({
+  label,
+  placeholder,
+  icon,
+  value,
+  onChange,
+  onFocus,
+  onBlur,
+  suggestions,
+  showDropdown,
+  onSelect,
+  getSuggestionLabel,
+}: InputGroupProps) => (
   <div className="flex-1 relative">
     <label className="text-xs font-bold text-slate-500 block mb-1.5">{label}</label>
     <div className="relative">
@@ -513,7 +621,7 @@ const InputGroup = ({ label, placeholder, icon, value, onChange, onFocus, onBlur
       />
       {showDropdown && suggestions && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
-          {suggestions.map((item: any, idx: number) => (
+          {suggestions.map((item, idx) => (
             <button
               key={item.id ?? idx}
               type="button"
@@ -530,7 +638,7 @@ const InputGroup = ({ label, placeholder, icon, value, onChange, onFocus, onBlur
   </div>
 );
 
-const DisplayField = ({ label, value, unit }: any) => (
+const DisplayField = ({ label, value, unit }: { label: string; value: string | number | null | undefined; unit?: string }) => (
   <div className="flex flex-col gap-1.5">
     <label className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">{label}</label>
     <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg">
@@ -540,7 +648,19 @@ const DisplayField = ({ label, value, unit }: any) => (
   </div>
 );
 
-const CheckItem = ({ done, title, sub, formData, specData, isChecked }: any) => {
+const CheckItem = ({
+  title,
+  sub,
+  formData,
+  specData,
+  isChecked,
+}: {
+  title: string;
+  sub: string;
+  formData: FormState;
+  specData: SpecRecord | null;
+  isChecked: boolean;
+}) => {
   const getCheckState = () => {
     // Determinar el estado según el contexto
     if (title === "Datos Base Capturados") {
