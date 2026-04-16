@@ -150,8 +150,8 @@ export default function DetalleEdicionOrden() {
         return value !== undefined && value !== null ? `${value}${unit}` : 'N/A';
     }
 
-    function getInputValue(value: unknown) {
-        return value !== undefined && value !== null ? value : '';
+    function getInputValue(value: unknown): string | number | readonly string[] {
+        return value !== undefined && value !== null ? (value as string | number | readonly string[]) : '';
     }
 
     function isFieldModified(originalValue: unknown, newValue?: unknown) {
