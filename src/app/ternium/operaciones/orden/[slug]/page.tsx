@@ -22,9 +22,9 @@ export default function OperacionDetailPage() {
 
   const [activeTab, setActiveTab] = useState<Tab>('especificacion');
   const [draftFormData, setDraftFormData] = useState<{
-    weight: '' as string,
-    shipping_packaging: '',
-    note: '',
+    weight: string;
+    shipping_packaging: string;
+    note: string;
   } | null>(null);
 
   const formData = useMemo(
