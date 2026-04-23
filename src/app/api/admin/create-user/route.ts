@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 interface CreateUserBody {
@@ -62,18 +62,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No tienes permisos para crear usuarios' }, { status: 403 });
     }
 
-    // Use service role key — no session created, no side effects on caller
-    const supabaseAdmin = createSupabaseAdmin(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
-    // Resolve or create client if needed
+    // Resolve or create client if needed — caller has admin RLS permissions
     let resolvedClientId: string | null = clienteId ?? null;
 
     if (!resolvedClientId && clienteNombre?.trim()) {
-      const { data: newClient, error: clientError } = await supabaseAdmin
+      const { data: newClient, error: clientError } = await callerSupabase
         .from('clients')
         .insert({ name: clienteNombre.trim() })
         .select('id')
@@ -85,15 +78,24 @@ export async function POST(request: NextRequest) {
       resolvedClientId = newClient.id;
     }
 
-    // Create auth user without creating a session
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    // Create auth user via signUp on an isolated client (no session persistence).
+    // The DB trigger insert_user_in_public_table fires on auth.users INSERT and
+    // auto-creates the public.users record from user_metadata.
+    const signUpClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    const { data: newUser, error: createError } = await signUpClient.auth.signUp({
       email: email.trim(),
       password: contraseña,
-      email_confirm: true,
-      user_metadata: {
-        name: nombre.trim(),
-        second_name: apellido.trim(),
-        role_id: roleId,
+      options: {
+        data: {
+          name: nombre.trim(),
+          second_name: apellido.trim(),
+          role_id: roleId,
+        },
       },
     });
 
@@ -108,15 +110,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No se recibió el usuario creado' }, { status: 500 });
     }
 
-    // Link external user to client
+    // Link external user to client — caller's authenticated session satisfies RLS WITH CHECK
     if (resolvedClientId) {
-      const { error: linkError } = await supabaseAdmin
+      const { error: linkError } = await callerSupabase
         .from('client_workers')
         .insert({ user_id: newUser.user.id, client_id: resolvedClientId });
 
       if (linkError) {
-        // Roll back: delete the auth user to avoid orphaned accounts
-        await supabaseAdmin.auth.admin.deleteUser(newUser.user.id);
         return NextResponse.json({ error: 'No se pudo asociar el usuario al cliente: ' + linkError.message }, { status: 400 });
       }
     }
