@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react';
-import { FiSearch, FiFilter, FiEye } from 'react-icons/fi';
+import { useState, useEffect, useRef } from 'react';
+import { FiSearch, FiFilter, FiEye, FiPlus, FiX } from 'react-icons/fi';
 import { HiOutlineExclamationCircle } from 'react-icons/hi';
 import { createClient } from '@/lib/supabase/client';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -8,6 +8,8 @@ import StatusPill from '@/components/StatusPill';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/context/AuthContext';
 import { useRoleGuard } from '@/hooks/useRoleGuard';
+import { normalizeRoleName } from '@/lib/permissions';
+import toast from 'react-hot-toast';
 
 interface Order {
   id: number;
@@ -38,8 +40,12 @@ const SeguimientoOrdenes = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  const role = normalizeRoleName(authUser?.role_name);
+  const canManageClients = role === 'admin' || role === 'user_admin';
 
   useEffect(() => {
     if (authUser === null) return;
@@ -52,7 +58,7 @@ const SeguimientoOrdenes = () => {
       setLoading(true);
       setError(null);
 
-      if (authUser?.role_name === 'admin') {
+      if (role === 'admin') {
         // Admin: fetch all orders across all clients
         const { data: ordersData, error: ordersError } = await supabase
           .from('orders')
@@ -159,11 +165,30 @@ const SeguimientoOrdenes = () => {
           </p>
         </div>
 
-        <div className="flex gap-4 w-full md:w-auto">
+        <div className="flex flex-wrap gap-3 items-start w-full md:w-auto">
           <StatCard title="PENDIENTES" value={pendingCount.toString()} badge={pendingCount > 0 ? `+${pendingCount}` : undefined} />
           <StatCard title="EN REVISIÓN" value={reviewCount.toString().padStart(2, '0')} />
+          {canManageClients && (
+            <button
+              onClick={() => setShowNewClientModal(true)}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#ff4301] to-[#e63d01] hover:from-[#e63d01] hover:to-[#cc3500] text-white font-bold py-3 px-5 rounded-xl shadow-[0_4px_16px_rgba(255,67,1,0.35)] hover:shadow-[0_6px_24px_rgba(255,67,1,0.45)] transition-all hover:-translate-y-0.5 active:scale-95 text-sm whitespace-nowrap"
+            >
+              <FiPlus size={16} />
+              Nuevo Cliente
+            </button>
+          )}
         </div>
       </div>
+
+      {showNewClientModal && (
+        <NuevoClienteModal
+          onClose={() => setShowNewClientModal(false)}
+          onCreated={() => {
+            setShowNewClientModal(false);
+            toast.success('Cliente creado correctamente');
+          }}
+        />
+      )}
 
       {/* TABLE CONTAINER */}
       <div className="max-w-7xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200">
@@ -289,5 +314,97 @@ const PagBtn = ({ label, active, disabled }: { label: string, active?: boolean, 
     {label}
   </button>
 );
+
+function NuevoClienteModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [nombre, setNombre] = useState('');
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = nombre.trim();
+    if (!trimmed) {
+      toast.error('Ingresa el nombre del cliente');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const { error } = await supabase.from('clients').insert({ name: trimmed });
+      if (error) {
+        if (error.message.includes('unique') || error.message.includes('duplicate')) {
+          toast.error('Ya existe un cliente con ese nombre');
+        } else {
+          toast.error('Error al crear el cliente: ' + error.message);
+        }
+        return;
+      }
+      onCreated();
+    } catch {
+      toast.error('Error inesperado al crear el cliente');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm border border-slate-200">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+          <h2 className="font-bold text-slate-800 text-base">Nuevo Cliente</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <FiX size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Nombre de la empresa
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej: Yamaha, Toyota, Honda..."
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#ff4301]/20 focus:border-[#ff4301]/40 outline-none transition-all"
+              autoComplete="off"
+              maxLength={120}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !nombre.trim()}
+              className="flex-1 py-2.5 rounded-xl bg-[#ff4301] hover:bg-[#e63d01] disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
+            >
+              {saving ? 'Guardando...' : 'Crear Cliente'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default SeguimientoOrdenes;

@@ -65,11 +65,14 @@ export default function EditarProgramacionPage() {
 
     try {
       const supabase = createClient();
+      const isReassignment =
+        !!order.programing_instructions?.responsible &&
+        formData.responsible !== order.programing_instructions.responsible;
       const instructionPayload = {
         responsible: selectedWorker.id,
         assigned_date: formData.deadline,
         note: formData.comment.trim() || 'No hay nota proporcionada',
-        status: order.programing_instructions?.status === 'Reasignado' ? 'Reasignado' : 'Asignado',
+        status: isReassignment ? 'Reasignado' : (order.programing_instructions?.status ?? 'Asignado'),
       };
 
       let programingInstructionsId = order.programing_instructions?.id ?? null;

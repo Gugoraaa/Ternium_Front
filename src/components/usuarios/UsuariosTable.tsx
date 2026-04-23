@@ -113,6 +113,12 @@ export default function UsuariosTable({ usuarios, toggleActive, changeRole, offb
 
   async function handleToggleActive(userId: string, active: boolean, isOffboarded: boolean) {
     closeMenu();
+    if (active && !isOffboarded) {
+      const confirmed = window.confirm(
+        '¿Desactivar temporalmente a este usuario?\n\nSu acceso se suspenderá pero podrá ser reactivado en cualquier momento. Esto NO es lo mismo que dar de baja.'
+      );
+      if (!confirmed) return;
+    }
     await toggleActive(userId, active, isOffboarded);
   }
 

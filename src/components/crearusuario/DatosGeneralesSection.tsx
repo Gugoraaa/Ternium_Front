@@ -1,6 +1,7 @@
 import { IoChevronDown } from 'react-icons/io5';
 import { FaRegAddressCard, FaRegBuilding, FaGlobeAmericas } from 'react-icons/fa';
 import type { Client, CreateUserFormData, Role, UserCategory } from '@/types/crearUsuario';
+import { NEW_CLIENT_SENTINEL } from '@/types/crearUsuario';
 import { getRoleLabel, getUserCategoryForRole } from '@/lib/permissions';
 
 interface DatosGeneralesSectionProps {
@@ -12,10 +13,6 @@ interface DatosGeneralesSectionProps {
   onCategoryChange: (category: UserCategory) => void;
 }
 
-/**
- * Este componente encapsula solo una sección de formulario.
- * Toda la lógica de negocio permanece en hooks; aquí solo hay rendering + eventos.
- */
 export default function DatosGeneralesSection({
   formData,
   userCategory,
@@ -25,6 +22,7 @@ export default function DatosGeneralesSection({
   onCategoryChange,
 }: DatosGeneralesSectionProps) {
   const employeeRoles = (roles ?? []).filter((role) => getUserCategoryForRole(role.name) !== 'external');
+  const isNewClient = formData.cliente === NEW_CLIENT_SENTINEL;
 
   return (
     <section>
@@ -121,18 +119,10 @@ export default function DatosGeneralesSection({
               />
             </div>
             <div>
-              <p
-                className={`font-bold text-base ${
-                  userCategory === 'employee' ? 'text-slate-900' : 'text-gray-400'
-                }`}
-              >
+              <p className={`font-bold text-base ${userCategory === 'employee' ? 'text-slate-900' : 'text-gray-400'}`}>
                 Empleado Ternium
               </p>
-              <p
-                className={`text-xs ${
-                  userCategory === 'employee' ? 'text-gray-400' : 'text-gray-300'
-                }`}
-              >
+              <p className={`text-xs ${userCategory === 'employee' ? 'text-gray-400' : 'text-gray-300'}`}>
                 Acceso a red interna y ERP
               </p>
             </div>
@@ -157,18 +147,10 @@ export default function DatosGeneralesSection({
               />
             </div>
             <div>
-              <p
-                className={`font-bold text-base ${
-                  userCategory === 'external' ? 'text-slate-900' : 'text-gray-400'
-                }`}
-              >
+              <p className={`font-bold text-base ${userCategory === 'external' ? 'text-slate-900' : 'text-gray-400'}`}>
                 Cliente Externo
               </p>
-              <p
-                className={`text-xs ${
-                  userCategory === 'external' ? 'text-gray-400' : 'text-gray-300'
-                }`}
-              >
+              <p className={`text-xs ${userCategory === 'external' ? 'text-gray-400' : 'text-gray-300'}`}>
                 Acceso a portal comercial
               </p>
             </div>
@@ -176,37 +158,54 @@ export default function DatosGeneralesSection({
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-4">
-        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest min-w-[150px]">
+      <div className="flex flex-col md:flex-row md:items-start gap-4">
+        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest min-w-[150px] mt-4">
           {userCategory === 'employee' ? 'Rol' : 'Cliente'}
         </label>
-        <div className="relative flex-1">
-          <select
-            name={userCategory === 'employee' ? 'rol' : 'cliente'}
-            data-field={userCategory === 'employee' ? 'rol' : 'cliente'}
-            value={userCategory === 'employee' ? formData.rol : formData.cliente}
-            onChange={onInputChange}
-            className="w-full appearance-none p-3 px-4 border border-gray-200 rounded-lg bg-white text-slate-500 focus:ring-2 focus:ring-orange-500/20 outline-none font-medium"
-          >
-            {userCategory === 'employee'
-              ? [
-                  <option key="empty-role" value="">Selecciona un rol</option>,
-                  ...employeeRoles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {getRoleLabel(role.name)}
-                  </option>
-                  )),
-                ]
-              : [
-                  <option key="empty-client" value="">Selecciona un cliente</option>,
-                  ...(clients?.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                  )) ?? []),
-                ]}
-          </select>
-          <IoChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <div className="flex-1 space-y-3">
+          <div className="relative">
+            <select
+              name={userCategory === 'employee' ? 'rol' : 'cliente'}
+              data-field={userCategory === 'employee' ? 'rol' : 'cliente'}
+              value={userCategory === 'employee' ? formData.rol : formData.cliente}
+              onChange={onInputChange}
+              className="w-full appearance-none p-3 px-4 border border-gray-200 rounded-lg bg-white text-slate-500 focus:ring-2 focus:ring-orange-500/20 outline-none font-medium"
+            >
+              {userCategory === 'employee'
+                ? [
+                    <option key="empty-role" value="">Selecciona un rol</option>,
+                    ...employeeRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {getRoleLabel(role.name)}
+                      </option>
+                    )),
+                  ]
+                : [
+                    <option key="empty-client" value="">Selecciona un cliente</option>,
+                    ...(clients?.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name}
+                      </option>
+                    )) ?? []),
+                    <option key={NEW_CLIENT_SENTINEL} value={NEW_CLIENT_SENTINEL}>
+                      + Crear nuevo cliente
+                    </option>,
+                  ]}
+            </select>
+            <IoChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
+
+          {userCategory === 'external' && isNewClient && (
+            <input
+              type="text"
+              data-field="clienteNombre"
+              value={formData.clienteNombre}
+              onChange={onInputChange}
+              autoComplete="off"
+              placeholder="Nombre del nuevo cliente (ej: Yamaha)"
+              className="w-full p-3 px-4 bg-white border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300 text-sm"
+            />
+          )}
         </div>
       </div>
     </section>

@@ -19,6 +19,7 @@ export interface CreateUserFormData {
   email: string;
   rol: string;
   cliente: string;
+  clienteNombre: string;
   contraseña: string;
 }
 
@@ -28,5 +29,8 @@ export const INITIAL_FORM_DATA: CreateUserFormData = {
   email: '',
   rol: '',
   cliente: '',
+  clienteNombre: '',
   contraseña: '',
 };
+
+export const NEW_CLIENT_SENTINEL = '__new__';

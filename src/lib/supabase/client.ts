@@ -13,13 +13,3 @@ export const createClient = (): SupabaseClient => {
   }
   return client;
 };
-
-export const createIsolatedClient = (): SupabaseClient =>
-  createBrowserClient(supabaseUrl!, supabaseKey!, {
-    auth: {
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      persistSession: false,
-      storageKey: 'ternium-create-user',
-    },
-  });

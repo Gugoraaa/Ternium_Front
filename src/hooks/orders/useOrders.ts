@@ -55,7 +55,7 @@ export function useOrders(): UseOrdersReturn {
       const transformedOrders: Order[] = data?.map(order => ({
         id: order.id,
         producto: order.product?.pt ,
-        cliente: order.client.name ,
+        cliente: order.client?.name ?? '—',
         fecha: order.created_at,
         status: order.status
       })) || [];

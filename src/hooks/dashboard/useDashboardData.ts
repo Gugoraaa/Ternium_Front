@@ -184,8 +184,8 @@ export function useDashboardData(): DashboardData {
 
           quickActions = [
             { label: 'Gestionar usuarios', description: 'Administrar accesos y roles', link: '/ternium/usuarios', iconKey: 'users' },
-            { label: 'Ver clientes', description: 'Revisar cartera y ordenes', link: '/ternium/clientes', iconKey: 'briefcase' },
-            { label: 'Supervisar gestion', description: 'Monitorear el flujo operativo', link: '/ternium/gestion', iconKey: 'clipboard' },
+            { label: 'Leaderboard', description: 'Ver rendimiento general', link: '/ternium/leaderboard', iconKey: 'trophy' },
+            { label: 'Vista de operaciones', description: 'Supervisar flujo operativo', link: '/ternium/operaciones', iconKey: 'clipboard' },
           ];
 
         // ── order_manager ────────────────────────────────────────────
@@ -455,6 +455,50 @@ export function useDashboardData(): DashboardData {
           quickActions = [
             { label: 'Gestionar usuarios', description: 'Ver y administrar cuentas', link: '/ternium/usuarios', iconKey: 'users' },
             { label: 'Crear usuario', description: 'Dar de alta un nuevo empleado', link: '/ternium/usuarios/crearusuario', iconKey: 'plus' },
+          ];
+
+        // ── dispatcher ───────────────────────────────────────────────
+        } else if (role === 'dispatcher') {
+          const [activosRes, entregadosMesRes, rechazadosRes, recentRes] = await Promise.all([
+            supabase.from('shipping_info').select('*', { count: 'exact', head: true })
+              .in('status', ['Pendiente', 'En ruta']),
+            supabase.from('shipping_info').select('*', { count: 'exact', head: true })
+              .eq('status', 'Entregado')
+              .gte('updated_at', startOfMonth),
+            supabase.from('shipping_info').select('*', { count: 'exact', head: true })
+              .eq('status', 'Rechazado'),
+            supabase.from('orders')
+              .select('id, status, created_at, product:product_id(pt), client:client_id(name), shipping_info:shipping_info_id(status)')
+              .not('shipping_info_id', 'is', null)
+              .order('created_at', { ascending: false })
+              .limit(5),
+          ]);
+
+          kpis = [
+            { label: 'Envíos activos', value: activosRes.count ?? 0, sublabel: 'Pendiente + En ruta', color: 'orange', alert: (activosRes.count ?? 0) > 0 },
+            { label: 'Entregados este mes', value: entregadosMesRes.count ?? 0, sublabel: 'Confirmados', color: 'emerald' },
+            { label: 'Rechazados', value: rechazadosRes.count ?? 0, sublabel: 'Requieren revisión', color: 'red', alert: (rechazadosRes.count ?? 0) > 0 },
+          ];
+
+          if ((rechazadosRes.count ?? 0) > 0) {
+            alerts.push({
+              type: 'warning',
+              message: `${rechazadosRes.count} ${rechazadosRes.count === 1 ? 'envío rechazado' : 'envíos rechazados'} pendiente de revisión`,
+              count: rechazadosRes.count ?? 0,
+              link: '/ternium/despacho',
+            });
+          }
+
+          recentOrders = mapRecentOrders(
+            (recentRes.data ?? []) as OrderSummaryRow[],
+            (id) => `/ternium/despacho/orden/${id}`,
+            (row) => getNestedStatus(row.dispatch_validation) ?? getNestedStatus(
+              (row as unknown as { shipping_info?: { status: string | null } }).shipping_info
+            ) ?? 'Pendiente'
+          );
+
+          quickActions = [
+            { label: 'Ir a Despacho', description: 'Gestionar envíos y entregas', link: '/ternium/despacho', iconKey: 'truck' },
           ];
         }
 

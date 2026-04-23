@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useUser } from '@/context/AuthContext';
 import { OrderWithOperacion, OperacionesFilters, PaginationInfo } from '@/types/operaciones';
 
 export function useOperacionesOrders() {
+  const { user } = useUser();
   const [allOrders, setAllOrders] = useState<OrderWithOperacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,9 +61,13 @@ export function useOperacionesOrders() {
 
       if (fetchError) throw fetchError;
 
+      // Only show orders where the current user is the assigned responsible
+      const userId = user?.id;
       setAllOrders(
         ((data as unknown as OrderWithOperacion[]) || []).filter(
-          (order) => !!order.programing_instructions?.responsible
+          (order) =>
+            !!order.programing_instructions?.responsible &&
+            order.programing_instructions.responsible === userId
         )
       );
     } catch (err) {
@@ -72,8 +78,9 @@ export function useOperacionesOrders() {
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (user) fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const clientOptions = useMemo(
     () => ['Todos los clientes', ...new Set(allOrders.map((order) => order.client?.name).filter(Boolean) as string[])],

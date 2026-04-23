@@ -216,11 +216,6 @@ export default function DetalleEdicionOrden() {
             return;
         }
 
-        if (!tarimaGuard?.canSubmit) {
-            toast.error(tarimaGuard?.hardErrors[0] ?? 'Corrige la especificación antes de solicitar revisión.');
-            return;
-        }
-
         try {
             const note = clientNote.trim() === '' ? 'No hay comentario proporcionado' : clientNote.trim();
             const allSpecsToPersist = {
