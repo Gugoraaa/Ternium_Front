@@ -101,30 +101,25 @@ const CapturaOrden = () => {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-
-    if (field === 'cliente') searchClientes(value);
-    else if (field === 'producto') searchProductos(value);
-    else if (field === 'masterId') searchMasters(value, formData.producto);
+    if (field === 'cliente') {
+      setFormData(prev => ({ ...prev, cliente: value, clienteId: '' }));
+      searchClientes(value);
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+      if (field === 'producto') searchProductos(value);
+      else if (field === 'masterId') searchMasters(value, formData.producto);
+    }
   };
 
   const searchClientes = async (query: string) => {
-    if (query.length < 2) {
-      setClienteSuggestions([]);
-      setShowClienteDropdown(false);
-      return;
-    }
-
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, name')
-        .ilike('name', `%${query}%`)
-        .limit(5);
+      let req = supabase.from('clients').select('id, name').limit(50);
+      if (query.length > 0) req = req.ilike('name', `%${query}%`);
 
+      const { data, error } = await req;
       if (error) throw error;
       setClienteSuggestions(data || []);
-      setShowClienteDropdown(true);
+      setShowClienteDropdown((data || []).length > 0);
     } catch (error) {
       console.error('Error al buscar clientes:', error);
     }
@@ -189,8 +184,13 @@ const CapturaOrden = () => {
       return;
     }
 
-    if (!productData || !specData || !formData.clienteId) {
-      toast.error('Faltan datos para generar la orden');
+    if (!formData.clienteId) {
+      toast.error('Selecciona un cliente de la lista desplegable');
+      return;
+    }
+
+    if (!productData || !specData) {
+      toast.error('Genera la especificación antes de continuar');
       return;
     }
 
@@ -323,8 +323,8 @@ const CapturaOrden = () => {
         <div className="flex-1 space-y-6">
           
           {/* SECCIÓN 1: CAPTURA BASE */}
-          <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center gap-2">
+          <section className="bg-white rounded-xl border border-slate-200 shadow-sm">
+            <div className="p-4 border-b border-slate-100 flex items-center gap-2 rounded-t-xl">
               <HiOutlineDocumentText className="text-[#ff4301] text-xl" />
               <h2 className="font-bold text-slate-800">Captura base de la orden</h2>
             </div>
@@ -344,7 +344,7 @@ const CapturaOrden = () => {
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
                   />
                   {showProductDropdown && productSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
                       {productSuggestions.map((item, idx) => (
                         <button
                           key={idx}
@@ -375,19 +375,26 @@ const CapturaOrden = () => {
                   onSelect={(item) => item.master && selectMaster(item.master)}
                   getSuggestionLabel={(item) => item.master || ''}
                 />
-                <InputGroup 
-                  label="Cliente" 
-                  placeholder="Buscar cliente..." 
-                  icon={<FiUser />}
-                  value={formData.cliente}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('cliente', e.target.value)}
-                  onFocus={() => searchClientes(formData.cliente)}
-                  onBlur={() => setTimeout(() => setShowClienteDropdown(false), 150)}
-                  suggestions={clienteSuggestions}
-                  showDropdown={showClienteDropdown}
-                  onSelect={(item) => item.id && item.name && selectCliente({ id: String(item.id), name: item.name })}
-                  getSuggestionLabel={(item) => item.name || ''}
-                />
+                <div className="flex-1">
+                  <InputGroup
+                    label="Cliente"
+                    placeholder="Buscar cliente..."
+                    icon={<FiUser />}
+                    value={formData.cliente}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('cliente', e.target.value)}
+                    onFocus={() => searchClientes(formData.cliente)}
+                    onBlur={() => setTimeout(() => setShowClienteDropdown(false), 150)}
+                    suggestions={clienteSuggestions}
+                    showDropdown={showClienteDropdown}
+                    onSelect={(item) => item.id && item.name && selectCliente({ id: String(item.id), name: item.name })}
+                    getSuggestionLabel={(item) => item.name || ''}
+                  />
+                  {formData.cliente && !formData.clienteId && (
+                    <p className="text-[11px] text-amber-600 font-semibold mt-1">
+                      Selecciona un cliente de la lista desplegable
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end pt-2">
@@ -560,10 +567,10 @@ const CapturaOrden = () => {
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <button 
                 onClick={handleGenerateOrder}
-                disabled={loading || !isChecked || !tarimaGuard?.canSubmit}
+                disabled={loading || !isChecked || !tarimaGuard?.canSubmit || !formData.clienteId || !productData}
                 className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 ${
-                  loading || !isChecked || !tarimaGuard?.canSubmit
-                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed shadow-none' 
+                  loading || !isChecked || !tarimaGuard?.canSubmit || !formData.clienteId || !productData
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed shadow-none'
                     : 'bg-[#ff4301] hover:bg-[#e63d01] text-white shadow-orange-100'
                 }`}
               >
@@ -620,7 +627,7 @@ const InputGroup = ({
         className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition-all"
       />
       {showDropdown && suggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
           {suggestions.map((item, idx) => (
             <button
               key={item.id ?? idx}
@@ -664,7 +671,7 @@ const CheckItem = ({
   const getCheckState = () => {
     // Determinar el estado según el contexto
     if (title === "Datos Base Capturados") {
-      return formData?.producto && formData?.masterId && formData?.cliente;
+      return formData?.producto && formData?.masterId && formData?.clienteId;
     } else if (title === "Especificación Generada") {
       return !!specData;
     } else if (title === "Validación Final") {
