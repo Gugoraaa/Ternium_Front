@@ -72,7 +72,7 @@ export default function EditarProgramacionPage() {
         responsible: selectedWorker.id,
         assigned_date: formData.deadline,
         note: formData.comment.trim() || 'No hay nota proporcionada',
-        status: isReassignment ? 'Reasignado' : (order.programing_instructions?.status ?? 'Asignado'),
+        status: isReassignment ? 'Reasignado' : 'Asignado',
       };
 
       let programingInstructionsId = order.programing_instructions?.id ?? null;
