@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from '@/context/AuthContext';
+import { getRoleMeta } from '@/lib/permissions';
 import { OrderWithOperacion } from '@/types/operaciones';
 import toast from 'react-hot-toast';
 
@@ -83,7 +84,8 @@ export function useOperacionDetail(orderId: string) {
   }) => {
     const edId = order?.execution_details?.id;
     if (!edId) return false;
-    if (order?.programing_instructions?.responsible !== user?.id) {
+    const isAdminUser = getRoleMeta(user?.role_name)?.allAccess === true;
+    if (!isAdminUser && order?.programing_instructions?.responsible !== user?.id) {
       toast.error('No tienes permiso para editar esta operación.');
       return false;
     }
@@ -120,7 +122,8 @@ export function useOperacionDetail(orderId: string) {
     note: string;
   }) => {
     if (!order) return false;
-    if (order.programing_instructions?.responsible !== user?.id) {
+    const isAdminUser = getRoleMeta(user?.role_name)?.allAccess === true;
+    if (!isAdminUser && order.programing_instructions?.responsible !== user?.id) {
       toast.error('No tienes permiso para validar esta operación.');
       return false;
     }
