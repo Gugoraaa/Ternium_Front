@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from '@/context/AuthContext';
+import { getRoleMeta } from '@/lib/permissions';
 import { OrderWithOperacion, OperacionesFilters, PaginationInfo } from '@/types/operaciones';
 
 export function useOperacionesOrders() {
@@ -61,14 +62,16 @@ export function useOperacionesOrders() {
 
       if (fetchError) throw fetchError;
 
-      // Only show orders where the current user is the assigned responsible
+      const roleMeta = getRoleMeta(user?.role_name);
+      const isAdminUser = roleMeta?.allAccess === true;
       const userId = user?.id;
+
       setAllOrders(
-        ((data as unknown as OrderWithOperacion[]) || []).filter(
-          (order) =>
-            !!order.programing_instructions?.responsible &&
-            order.programing_instructions.responsible === userId
-        )
+        ((data as unknown as OrderWithOperacion[]) || []).filter((order) => {
+          if (!order.programing_instructions?.responsible) return false;
+          if (isAdminUser) return true;
+          return order.programing_instructions.responsible === userId;
+        })
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar operaciones');
