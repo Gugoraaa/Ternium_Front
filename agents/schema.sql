@@ -37,6 +37,12 @@ CREATE TYPE execution_details_enum AS ENUM (
   'Pendiente'
 );
 
+-- NOTE: The names "order-status-enum" and "programing-status-enum" (with hyphens
+-- and the single-m spelling of "programing") are the exact identifiers used in the
+-- Supabase production database, as reflected in the auto-generated
+-- src/types/database.ts file. They are preserved here for accuracy and must be
+-- quoted wherever they are referenced in SQL.
+
 CREATE TYPE "order-status-enum" AS ENUM (
   'Aceptado',
   'Rechazado',
@@ -109,8 +115,8 @@ CREATE TABLE users (
 -- client_workers  (user ↔ client assignment; each user belongs to at most one client)
 -- ---------------------------------------------------------------------------
 CREATE TABLE client_workers (
-  client_id  uuid  NOT NULL DEFAULT uuid_generate_v4(),
-  user_id    uuid  NOT NULL DEFAULT uuid_generate_v4(),
+  client_id  uuid  NOT NULL,
+  user_id    uuid  NOT NULL,
 
   CONSTRAINT client_workers_client_id_fkey
     FOREIGN KEY (client_id) REFERENCES clients (id),
@@ -252,7 +258,7 @@ CREATE TABLE programing_instructions (
 -- ---------------------------------------------------------------------------
 CREATE TABLE orders (
   id                         serial               NOT NULL,
-  client_id                  uuid                 NOT NULL DEFAULT uuid_generate_v4(),
+  client_id                  uuid                 NOT NULL,
   contra_offer               boolean              NOT NULL DEFAULT false,
   created_at                 timestamptz          NOT NULL DEFAULT now(),
   dispatch_validation_id     integer,
@@ -264,7 +270,7 @@ CREATE TABLE orders (
   shipping_info_id           integer,
   specs_id                   integer              NOT NULL,
   status                     "order-status-enum"  NOT NULL DEFAULT 'Revision Operador',
-  worker_id                  uuid                 NOT NULL DEFAULT uuid_generate_v4(),
+  worker_id                  uuid                 NOT NULL,
 
   CONSTRAINT orders_pkey PRIMARY KEY (id),
 
